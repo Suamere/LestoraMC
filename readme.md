@@ -1,6 +1,8 @@
-# Example Mod (Lestora)
+# LestoraMC
 
-Lestora is a simple Minecraft Forge mod that highlights blocks with red boxes based on configurable settings. It’s designed to help with debugging and visualizing block exposure in the game.
+LestoraMC will eventually add a bunch of small features that make Minecraft more hardcore or realistic.  Not graphically, but functionally.  For example, more likelihood for blocks to collapse when you are mining, better trading, and some utilities.
+
+Currently, it features a small test modification that highlights blocks with red boxes based on configurable settings. It’s designed to help with debugging and visualizing block exposure in the game.
 
 ## Features
 - **Highlight Blocks:** Highlights solid blocks within a specified radius.
