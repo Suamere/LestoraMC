@@ -9,22 +9,15 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.debug.DebugRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.AABB;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import java.util.ArrayList;
 import java.util.List;
 
 @Mixin(LevelRenderer.class)
-public class LevelRendererMixin {
-
-    private static final Logger LOGGER = LogManager.getLogger("LevelRendererMixin");
-
+public abstract class LevelRendererMixin {
     @Inject(method = "renderLevel", at = @At("TAIL"))
     private void onRenderLevel(
             com.mojang.blaze3d.resource.GraphicsResourceAllocator allocator,
@@ -37,7 +30,8 @@ public class LevelRendererMixin {
             CallbackInfo ci
     ) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || mc.player == null) return;
+        if (mc.level == null) return;
+        if (mc.player == null) return;
 
         // If no highlight radius is set, do nothing.
         if (HighlightConfig.getHighlightRadius() <= 0) return;

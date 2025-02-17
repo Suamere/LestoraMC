@@ -2,17 +2,20 @@ package com.lestora;
 
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraft.world.level.Level;
+import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE)
+@Mod.EventBusSubscriber(value = net.minecraftforge.api.distmarker.Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class CommandRegistrationHandler {
+
     @SubscribeEvent
-    public static void onRegisterCommands(RegisterCommandsEvent event) {
+    public static void onRegisterClientCommands(RegisterClientCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("highlightRadius")
                 .then(Commands.argument("radius", DoubleArgumentType.doubleArg(0))
                         .executes(CommandRegistrationHandler::setHighlight)
@@ -22,12 +25,17 @@ public class CommandRegistrationHandler {
 
     private static int setHighlight(CommandContext<CommandSourceStack> context) {
         double radius = DoubleArgumentType.getDouble(context, "radius");
-        // Get the command source position
         double x = context.getSource().getPosition().x;
         double y = context.getSource().getPosition().y;
         double z = context.getSource().getPosition().z;
 
-        HighlightConfig.setHighlightCenterAndRadius(x, y, z, radius, context.getSource().getLevel());
+        Level world = Minecraft.getInstance().level;
+        if(world == null) {
+            context.getSource().sendFailure(Component.literal("No client world available."));
+            return 0;
+        }
+
+        HighlightConfig.setHighlightCenterAndRadius(x, y, z, radius, world);
         context.getSource().sendSuccess(() -> Component.literal("Highlight radius set to " + radius
                 + " at (" + x + ", " + y + ", " + z + ")"), true);
         return 1;

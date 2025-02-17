@@ -24,6 +24,18 @@ public class HighlightConfig {
         updateHighlightedPositions(level);
     }
 
+    public static double getCenterX() {
+        return centerX;
+    }
+
+    public static double getCenterY() {
+        return centerY;
+    }
+
+    public static double getCenterZ() {
+        return centerZ;
+    }
+
     public static double getHighlightRadius() {
         return highlightRadius;
     }
