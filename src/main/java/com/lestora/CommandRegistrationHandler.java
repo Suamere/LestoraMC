@@ -38,8 +38,8 @@ public class CommandRegistrationHandler {
 
         UUID userId = Minecraft.getInstance().player.getUUID();
         HighlightConfig.setHighlightCenterAndRadius(userId, x, y, z, radius, world);
-        context.getSource().sendSuccess(() -> Component.literal("Highlight radius set to " + radius
-                + " at (" + x + ", " + y + ", " + z + ")"), true);
+//        context.getSource().sendSuccess(() -> Component.literal("Highlight radius set to " + radius
+//                + " at (" + x + ", " + y + ", " + z + ")"), true);
         return 1;
     }
 }
