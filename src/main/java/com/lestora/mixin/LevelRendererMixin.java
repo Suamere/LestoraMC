@@ -15,6 +15,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.List;
+import java.util.UUID;
 
 @Mixin(LevelRenderer.class)
 public abstract class LevelRendererMixin {
@@ -34,10 +35,12 @@ public abstract class LevelRendererMixin {
         if (mc.player == null) return;
 
         // If no highlight radius is set, do nothing.
-        if (HighlightConfig.getHighlightRadius() <= 0) return;
+        UUID userId = mc.player.getUUID();
+        HighlightConfig config = HighlightConfig.getUserHighlightConfig(userId);
+        if (config == null || config.getHighlightRadius() <= 0) return;
 
         // Get precomputed positions
-        List<BlockPos> positions = HighlightConfig.getHighlightedPositions();
+        List<BlockPos> positions = config.getHighlightedPositions();
         if (positions.isEmpty()) return;
 
         PoseStack poseStack = new PoseStack();

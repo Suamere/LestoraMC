@@ -10,6 +10,7 @@ import net.minecraft.world.level.Level;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import java.util.UUID;
 
 @Mod.EventBusSubscriber(value = net.minecraftforge.api.distmarker.Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class CommandRegistrationHandler {
@@ -35,7 +36,8 @@ public class CommandRegistrationHandler {
             return 0;
         }
 
-        HighlightConfig.setHighlightCenterAndRadius(x, y, z, radius, world);
+        UUID userId = Minecraft.getInstance().player.getUUID();
+        HighlightConfig.setHighlightCenterAndRadius(userId, x, y, z, radius, world);
         context.getSource().sendSuccess(() -> Component.literal("Highlight radius set to " + radius
                 + " at (" + x + ", " + y + ", " + z + ")"), true);
         return 1;
