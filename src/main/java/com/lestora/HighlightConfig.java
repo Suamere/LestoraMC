@@ -25,12 +25,10 @@ public class HighlightConfig {
             if (existingConfig == null) {
                 existingConfig = new HighlightConfig();
             }
-            // Update the user's config values
             existingConfig.centerX = x;
             existingConfig.centerY = y;
             existingConfig.centerZ = z;
             existingConfig.highlightRadius = radius;
-            // Recalculate highlighted positions for the whole area
             existingConfig.updateHighlightedPositions(level);
             return existingConfig;
         });
@@ -40,42 +38,23 @@ public class HighlightConfig {
         return userConfigs.get(userId);
     }
 
-    public double getCenterX() {
-        return centerX;
+    public double getHighlightRadius() { return highlightRadius; }
+    public List<BlockPos> getHighlightedPositions() { return highlightedPositions; }
+
+    private int getBlockCoord(double coord) {
+        return (int) Math.floor(coord);
     }
 
-    public double getCenterY() {
-        return centerY;
-    }
+    private boolean isWithinSphere(BlockPos pos) {
+        int centerBlockX = getBlockCoord(centerX);
+        int centerBlockY = getBlockCoord(centerY);
+        int centerBlockZ = getBlockCoord(centerZ);
 
-    public double getCenterZ() {
-        return centerZ;
-    }
-
-    public double getHighlightRadius() {
-        return highlightRadius;
-    }
-
-    public List<BlockPos> getHighlightedPositions() {
-        return highlightedPositions;
-    }
-
-    private void updateHighlightedPositions(Level level) {
-        highlightedPositions.clear();
-        BlockPos centerPos = new BlockPos((int) centerX, (int) centerY, (int) centerZ);
-        int intRadius = (int) Math.ceil(highlightRadius);
-        for (int x = -intRadius; x <= intRadius; x++) {
-            for (int y = -intRadius; y <= intRadius; y++) {
-                for (int z = -intRadius; z <= intRadius; z++) {
-                    BlockPos pos = centerPos.offset(x, y, z);
-                    if (pos.distSqr(centerPos) <= highlightRadius * highlightRadius) {
-                        if (isBlockExposed(pos, level)) {
-                            highlightedPositions.add(pos);
-                        }
-                    }
-                }
-            }
-        }
+        double dx = (pos.getX() + 0.5) - (centerBlockX + 0.5);
+        double dy = (pos.getY() + 0.5) - (centerBlockY + 0.5);
+        double dz = (pos.getZ() + 0.5) - (centerBlockZ + 0.5);
+        double distSqr = dx * dx + dy * dy + dz * dz;
+        return distSqr <= highlightRadius * highlightRadius;
     }
 
     private boolean isBlockExposed(BlockPos pos, Level level) {
@@ -91,14 +70,30 @@ public class HighlightConfig {
         return false;
     }
 
+    private void updateHighlightedPositions(Level level) {
+        highlightedPositions.clear();
+        int centerBlockX = getBlockCoord(centerX);
+        int centerBlockY = getBlockCoord(centerY);
+        int centerBlockZ = getBlockCoord(centerZ);
+        int intRadius = (int) Math.ceil(highlightRadius);
+        // Iterate over a cube surrounding the center block
+        for (int x = centerBlockX - intRadius; x <= centerBlockX + intRadius; x++) {
+            for (int y = centerBlockY - intRadius; y <= centerBlockY + intRadius; y++) {
+                for (int z = centerBlockZ - intRadius; z <= centerBlockZ + intRadius; z++) {
+                    BlockPos pos = new BlockPos(x, y, z);
+                    if (isWithinSphere(pos) && isBlockExposed(pos, level)) {
+                        highlightedPositions.add(pos);
+                    }
+                }
+            }
+        }
+    }
+
     public void remove(BlockPos brokenPos, Level level) {
         highlightedPositions.remove(brokenPos);
-
-        BlockPos centerPos = new BlockPos((int) centerX, (int) centerY, (int) centerZ);
-
         for (Direction dir : Direction.values()) {
             BlockPos neighborPos = brokenPos.relative(dir);
-            if (neighborPos.distSqr(centerPos) <= highlightRadius * highlightRadius) {
+            if (isWithinSphere(neighborPos)) {
                 if (isBlockExposed(neighborPos, level)) {
                     if (!highlightedPositions.contains(neighborPos)) {
                         highlightedPositions.add(neighborPos);
@@ -111,11 +106,7 @@ public class HighlightConfig {
     }
 
     public void add(BlockPos placedPos, Level level) {
-        BlockPos centerPos = new BlockPos((int) centerX, (int) centerY, (int) centerZ);
-        // Only proceed if the placed block is within the highlight sphere.
-        if (placedPos.distSqr(centerPos) > highlightRadius * highlightRadius) return;
-
-        // Check the newly placed block.
+        if (!isWithinSphere(placedPos)) return;
         if (isBlockExposed(placedPos, level)) {
             if (!highlightedPositions.contains(placedPos)) {
                 highlightedPositions.add(placedPos);
@@ -123,11 +114,9 @@ public class HighlightConfig {
         } else {
             highlightedPositions.remove(placedPos);
         }
-
-        // Check neighbors: placing a block might cover adjacent blocks, so update them.
         for (Direction dir : Direction.values()) {
             BlockPos neighborPos = placedPos.relative(dir);
-            if (neighborPos.distSqr(centerPos) <= highlightRadius * highlightRadius) {
+            if (isWithinSphere(neighborPos)) {
                 if (isBlockExposed(neighborPos, level)) {
                     if (!highlightedPositions.contains(neighborPos)) {
                         highlightedPositions.add(neighborPos);
