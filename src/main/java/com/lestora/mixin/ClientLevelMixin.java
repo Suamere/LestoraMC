@@ -18,8 +18,6 @@ import java.util.UUID;
 public class ClientLevelMixin {
     @Inject(method = "setBlocksDirty", at = @At("HEAD"))
     private void onSetBlocksDirty(BlockPos pos, BlockState oldState, BlockState newState, CallbackInfo ci) {
-        System.out.println("[HighlightConfig] setBlocksDirty injection hit at " + pos);
-
         if (Minecraft.getInstance().player == null) return;
         UUID userId = Minecraft.getInstance().player.getUUID();
         HighlightConfig config = HighlightConfig.getUserHighlightConfig(userId);

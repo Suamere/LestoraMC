@@ -20,7 +20,9 @@ public class DebugOverlay {
 
         GuiGraphics guiGraphics = event.getGuiGraphics();
 
-        String supportType = StandingBlockUtil.getSupportingBlockType(mc.player);
+        var supportPos = StandingBlockUtil.getSupportingBlock(mc.player);
+        String supportType = StandingBlockUtil.getSupportingBlockType(supportPos);
+
         String text = "Wetness: " + WetnessUtil.getPlayerWetness(mc.player).name();
         Component comp = Component.literal(text);
         Component comp2 = Component.literal("Supporting Block: " + supportType);
