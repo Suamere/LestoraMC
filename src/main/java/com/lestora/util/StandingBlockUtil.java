@@ -38,7 +38,8 @@ public class StandingBlockUtil {
                 if (shape.isEmpty()) continue;
                 AABB shapeAABB = shape.bounds().move(pos);
                 AABB intersection = shapeAABB.intersect(sampleArea);
-                double area = (intersection != null) ? intersection.getXsize() * intersection.getZsize() : 0.0;
+                double area = (intersection.getXsize() > 0 && intersection.getZsize() > 0)
+                        ? intersection.getXsize() * intersection.getZsize() : 0.0;
                 if (area > bestArea) {
                     bestArea = area;
                     bestSupport = pos;
