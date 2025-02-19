@@ -33,43 +33,43 @@ public class EntityBlockInfo {
         this._headPos = headPos;
     }
 
-    public static EntityBlockInfo fromSupport(BlockState supportState, BlockPos supportPosX) {
+    public static EntityBlockInfo fromSupport(BlockState supportState, BlockPos supportPos) {
         Level world = Minecraft.getInstance().level;
-        var supportBlk = supportPosX;
+        var sptBlk = supportPos;
         var sptState = supportState;
         if (supportState.getBlock() == Blocks.WATER) {
-            var headBlk = supportBlk.above();
+            var headBlk = sptBlk.above();
             var headState = world.getBlockState(headBlk);
-            var belowBlk = supportBlk.below();
+            var belowBlk = sptBlk.below();
             var belowState = world.getBlockState(belowBlk);
-            return new EntityBlockInfo(sptState, belowState, sptState, headState, Coordinates.fromPos(supportBlk), Coordinates.fromPos(belowBlk), Coordinates.fromPos(supportBlk), Coordinates.fromPos(headBlk));
+            return new EntityBlockInfo(sptState, belowState, sptState, headState, Coordinates.fromPos(sptBlk), Coordinates.fromPos(belowBlk), Coordinates.fromPos(sptBlk), Coordinates.fromPos(headBlk));
         }
-        else if (supportState.getBlock() == Blocks.AIR) {
-            var belowBlk = supportBlk.below();
+        else if (sptState.getBlock() == Blocks.AIR) {
+            var belowBlk = sptBlk.below();
             var belowState = world.getBlockState(belowBlk);
             if (belowState.getBlock() == Blocks.WATER) {
-                supportBlk = belowBlk;
+                var headBlk = sptBlk;
+                var headState = sptState;
+                sptBlk = belowBlk;
                 sptState = belowState;
-                belowBlk = supportBlk.below();
+                belowBlk = sptBlk.below();
                 belowState = world.getBlockState(belowBlk);
-                var headBlk = supportBlk.above();
-                var headState = world.getBlockState(headBlk);
-                return new EntityBlockInfo(sptState, belowState, sptState, headState, Coordinates.fromPos(supportBlk), Coordinates.fromPos(belowBlk), Coordinates.fromPos(supportBlk), Coordinates.fromPos(headBlk));
+                return new EntityBlockInfo(sptState, belowState, sptState, headState, Coordinates.fromPos(sptBlk), Coordinates.fromPos(belowBlk), Coordinates.fromPos(sptBlk), Coordinates.fromPos(headBlk));
             }
             else {
-                var headBlk = supportBlk.above();
+                var headBlk = sptBlk.above();
                 var headState = world.getBlockState(headBlk);
-                return new EntityBlockInfo(sptState, belowState, sptState, headState, Coordinates.fromPos(supportBlk), Coordinates.fromPos(belowBlk), Coordinates.fromPos(supportBlk), Coordinates.fromPos(headBlk));
+                return new EntityBlockInfo(sptState, belowState, sptState, headState, Coordinates.fromPos(sptBlk), Coordinates.fromPos(belowBlk), Coordinates.fromPos(sptBlk), Coordinates.fromPos(headBlk));
             }
         }
 
-        var feetBlk = supportBlk.above();
+        var feetBlk = sptBlk.above();
         var feetState = world.getBlockState(feetBlk);
         var headBlk = feetBlk.above();
         var headState = world.getBlockState(headBlk);
-        var belowBlk = supportBlk.below();
+        var belowBlk = sptBlk.below();
         var belowState = world.getBlockState(belowBlk);
-        return new EntityBlockInfo(sptState, belowState, feetState, headState, Coordinates.fromPos(supportBlk), Coordinates.fromPos(belowBlk), Coordinates.fromPos(feetBlk), Coordinates.fromPos(headBlk));
+        return new EntityBlockInfo(sptState, belowState, feetState, headState, Coordinates.fromPos(sptBlk), Coordinates.fromPos(belowBlk), Coordinates.fromPos(feetBlk), Coordinates.fromPos(headBlk));
     }
 
     public BlockState getSupportingBlock() {

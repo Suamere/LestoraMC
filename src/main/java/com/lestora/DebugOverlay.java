@@ -23,9 +23,9 @@ public class DebugOverlay {
         var supportPos = StandingBlockUtil.getSupportingBlock(mc.player);
         String supportType = StandingBlockUtil.getSupportingBlockType(supportPos);
 
-        String text = "Wetness: " + WetnessUtil.getPlayerWetness(mc.player).name();
+        String text = "Wetness: " + WetnessUtil.getPlayerWetness(mc.player);
         Component comp = Component.literal(text);
-        Component comp2 = Component.literal("Supporting Block: " + supportType);
+        Component comp2 = Component.literal("Supporting Block: " + supportType + " " + supportPos.getSupportingPos());
 
         guiGraphics.drawString(mc.font, comp.getString(), 10, 10, 0xFFFFFF, false);
         guiGraphics.drawString(mc.font, comp2.getString(), 10, 25, 0xFFFFFF, false);

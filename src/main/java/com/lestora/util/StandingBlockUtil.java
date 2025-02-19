@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.NotNull;
 
 public class StandingBlockUtil {
 
@@ -18,64 +19,67 @@ public class StandingBlockUtil {
         if (world == null || player == null) return null;
 
         BlockPos supportingPos = player.getOnPos();
-        BlockState state = world.getBlockState(supportingPos);
+        var blk = world.getBlockState(supportingPos).getBlock();
 
-        if (state.getBlock() == Blocks.AIR) {
-            // Move the player's bounding box downward by one block.
-            AABB bb = player.getBoundingBox().move(0, -1.0, 0);
-            // We'll search for support in the blocks intersecting the horizontal span of bb
-            int minX = Mth.floor(bb.minX);
-            int maxX = Mth.floor(bb.maxX);
-            int posY = Mth.floor(bb.minY); // likely the candidate block's y
-            int minZ = Mth.floor(bb.minZ);
-            int maxZ = Mth.floor(bb.maxZ);
+        if (blk == Blocks.AIR || blk == Blocks.WATER) {
+            supportingPos = getBlockPos(player, world, supportingPos, -1, blk == Blocks.WATER);
+        }
 
-            BlockPos bestCandidate = null;
-            double bestOverlap = 0.0;
+        return EntityBlockInfo.fromSupport(world.getBlockState(supportingPos), supportingPos);
+    }
 
-            // Check all blocks in that horizontal area at the candidate y-level.
-            for (int x = minX; x <= maxX; x++) {
-                for (int z = minZ; z <= maxZ; z++) {
-                    BlockPos pos = new BlockPos(x, posY, z);
-                    BlockState bs = world.getBlockState(pos);
-                    VoxelShape shape = bs.getCollisionShape(world, pos);
-                    if (shape.isEmpty())
-                        continue;
+    private static @NotNull BlockPos getBlockPos(Player player, Level world, BlockPos supportingPos, int offset, boolean fromWater) {
+        // Move the player's bounding box downward by one block.
+        AABB bb = player.getBoundingBox().move(0, offset, 0);
+        // We'll search for support in the blocks intersecting the horizontal span of bb
+        int minX = Mth.floor(bb.minX);
+        int maxX = Mth.floor(bb.maxX);
+        int posY = Mth.floor(bb.minY); // likely the candidate block's y
+        int minZ = Mth.floor(bb.minZ);
+        int maxZ = Mth.floor(bb.maxZ);
 
-                    // Convert the shape to an AABB in world coordinates.
-                    AABB shapeBB = shape.bounds().move(pos);
-                    // Calculate the horizontal intersection with our downward-offset bounding box.
-                    AABB intersection = shapeBB.intersect(bb);
-                    double overlap = 0.0;
-                    if (intersection != null && intersection.getXsize() > 0 && intersection.getZsize() > 0) {
-                        overlap = intersection.getXsize() * intersection.getZsize();
-                    }
-                    if (overlap > bestOverlap) {
-                        bestOverlap = overlap;
-                        bestCandidate = pos;
-                    }
+        BlockPos bestCandidate = null;
+        double bestOverlap = 0.0;
+
+        // Check all blocks in that horizontal area at the candidate y-level.
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                BlockPos pos = new BlockPos(x, posY, z);
+                BlockState bs = world.getBlockState(pos);
+                VoxelShape shape = bs.getCollisionShape(world, pos);
+                if (shape.isEmpty())
+                    continue;
+
+                // Convert the shape to an AABB in world coordinates.
+                AABB shapeBB = shape.bounds().move(pos);
+                // Calculate the horizontal intersection with our downward-offset bounding box.
+                AABB intersection = shapeBB.intersect(bb);
+                double overlap = 0.0;
+                if (intersection != null && intersection.getXsize() > 0 && intersection.getZsize() > 0) {
+                    overlap = intersection.getXsize() * intersection.getZsize();
                 }
-            }
-
-            if (bestCandidate != null && bestOverlap > 0.0) {
-                supportingPos = bestCandidate;
-            } else {
-                // If no block collision is found, check if water exists below the original support.
-                BlockPos waterPos = supportingPos.below();
-                BlockState waterState = world.getBlockState(waterPos);
-                if (waterState.getBlock() == Blocks.WATER) {
-                    supportingPos = waterPos;
+                if (overlap > bestOverlap) {
+                    bestOverlap = overlap;
+                    bestCandidate = pos;
                 }
             }
         }
 
-        if (state.getBlock() == Blocks.WATER) {
-            if (state.hasProperty(BlockStateProperties.WATERLOGGED) && state.getValue(BlockStateProperties.WATERLOGGED)) {
-                state = state.setValue(BlockStateProperties.WATERLOGGED, false);
+        if (bestCandidate != null && bestOverlap > 0.0) {
+            supportingPos = bestCandidate;
+        } else {
+            // If no block collision is found, check if water exists below the original support.
+            BlockPos waterPos = supportingPos.below();
+            BlockState waterState = world.getBlockState(waterPos);
+            if (waterState.getBlock() == Blocks.WATER) {
+                supportingPos = waterPos;
+                if (offset == -1 && !fromWater){
+                    var beneath = getBlockPos(player, world, supportingPos, -2, true);
+                    if (world.getBlockState(beneath).getBlock() != Blocks.WATER) return beneath;
+                }
             }
         }
-
-        return EntityBlockInfo.fromSupport(state, supportingPos);
+        return supportingPos;
     }
 
     public static String getSupportingBlockType(EntityBlockInfo supportPos) {
