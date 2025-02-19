@@ -144,7 +144,7 @@ public class WetnessUtil {
                 return intermediateWetness(player, world);
             }
         }
-        else if (player.isInWaterOrRain()){
+        else if (player.isInWaterOrRain() && world.getBlockState(player.blockPosition().below()).canOcclude()){
             return Wetness.DAMP.name() + "19";
         }
 

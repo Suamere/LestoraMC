@@ -67,13 +67,13 @@ public class StandingBlockUtil {
 
         if (bestCandidate != null && bestOverlap > 0.0) {
             supportingPos = bestCandidate;
-        } else {
+        } else if (!fromWater) {
             // If no block collision is found, check if water exists below the original support.
             BlockPos waterPos = supportingPos.below();
             BlockState waterState = world.getBlockState(waterPos);
             if (waterState.getBlock() == Blocks.WATER) {
                 supportingPos = waterPos;
-                if (offset == -1 && !fromWater){
+                if (offset == -1){
                     var beneath = getBlockPos(player, world, supportingPos, -2, true);
                     if (world.getBlockState(beneath).getBlock() != Blocks.WATER) return beneath;
                 }

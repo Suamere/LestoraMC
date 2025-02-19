@@ -37,17 +37,17 @@ public class HighlightBlockBreakListener {
         config.add(placedPos, level);
     }
 
-    @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-
-        Player player = event.player;
-        if (!player.isInWater()) return;
-        Level level = Minecraft.getInstance().level;
-        if (!level.isClientSide) return;
-        if (player.isCreative() || player.isSpectator()) return;
-
-        var velocity = player.getDeltaMovement();
-        player.setDeltaMovement(velocity.x / 2, velocity.y > 0 ? -velocity.y : velocity.y, velocity.z / 2);
-    }
+//    @SubscribeEvent
+//    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
+//        if (event.phase != TickEvent.Phase.END) return;
+//
+//        Player player = event.player;
+//        if (!player.isInWater()) return;
+//        Level level = Minecraft.getInstance().level;
+//        if (!level.isClientSide) return;
+//        if (player.isCreative() || player.isSpectator()) return;
+//
+//        var velocity = player.getDeltaMovement();
+//        player.setDeltaMovement(velocity.x / 2, velocity.y > 0 ? -velocity.y : velocity.y, velocity.z / 2);
+//    }
 }

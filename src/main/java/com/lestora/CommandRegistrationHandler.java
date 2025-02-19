@@ -1,5 +1,6 @@
 package com.lestora;
 
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.client.Minecraft;
@@ -17,9 +18,25 @@ public class CommandRegistrationHandler {
 
     @SubscribeEvent
     public static void onRegisterClientCommands(RegisterClientCommandsEvent event) {
-        event.getDispatcher().register(Commands.literal("highlightRadius")
-                .then(Commands.argument("radius", DoubleArgumentType.doubleArg(0))
-                        .executes(CommandRegistrationHandler::setHighlight)
+        event.getDispatcher().register(Commands.literal("lestora")
+                .then(Commands.literal("highlightRadius")
+                        .then(Commands.argument("radius", DoubleArgumentType.doubleArg(0))
+                                .executes(CommandRegistrationHandler::setHighlight)
+                        )
+                )
+                .then(Commands.literal("showDebug")
+                        // If no argument is provided, default to true.
+                        .executes(ctx -> {
+                            DebugOverlay.setShowDebug(true);
+                            return 1;
+                        })
+                        .then(Commands.argument("value", BoolArgumentType.bool())
+                                .executes(ctx -> {
+                                    boolean value = BoolArgumentType.getBool(ctx, "value");
+                                    DebugOverlay.setShowDebug(value);
+                                    return 1;
+                                })
+                        )
                 )
         );
     }
