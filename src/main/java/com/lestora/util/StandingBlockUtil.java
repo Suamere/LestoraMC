@@ -5,45 +5,37 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class StandingBlockUtil {
 
     /**
-     * Returns the block space that the player occupies.
-     * (Typically the block above the supporting block.)
+     * Returns the block space that the player would occupy if their bounding box were offset downward by {@code offset} blocks.
      */
-    public static BlockPos getPlayerStandingSpace(Player player) {
+    public static BlockPos getPlayerStandingSpaceOffset(Player player, int offset) {
         Level world = Minecraft.getInstance().level;
         if (world == null) {
             return null;
         }
-        AABB bb = player.getBoundingBox();
+        // Offset the player's bounding box downward.
+        AABB bb = player.getBoundingBox().move(0, -offset, 0);
         // Use a slight offset below the feet to sample support.
         double sampleY = bb.minY - 0.1;
-
         int minX = Mth.floor(bb.minX);
         int maxX = Mth.floor(bb.maxX);
         int minZ = Mth.floor(bb.minZ);
         int maxZ = Mth.floor(bb.maxZ);
-
         BlockPos bestSupport = null;
         double bestArea = 0.0;
         AABB sampleArea = new AABB(bb.minX, sampleY, bb.minZ, bb.maxX, sampleY + 0.01, bb.maxZ);
-
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {
                 BlockPos pos = new BlockPos(x, Mth.floor(sampleY), z);
                 BlockState state = world.getBlockState(pos);
                 VoxelShape shape = state.getCollisionShape(world, pos);
-                if (shape.isEmpty()) {
-                    continue;
-                }
+                if (shape.isEmpty()) continue;
                 AABB shapeAABB = shape.bounds().move(pos);
                 AABB intersection = shapeAABB.intersect(sampleArea);
                 double area = (intersection != null) ? intersection.getXsize() * intersection.getZsize() : 0.0;
@@ -53,79 +45,65 @@ public class StandingBlockUtil {
                 }
             }
         }
-        // The "standing space" is typically one block above the support.
+        // Return the block space above the candidate support.
         return (bestSupport != null) ? bestSupport.above() : null;
     }
 
-    /**
-     * Returns the block position that is actually supporting the player.
-     *
-     * If the player's immediate support (the block below their standing space) is air,
-     * this method scans downward up to 50 blocks. In that scan:
-     *   - Flowing water (non-source water) is ignored (treated as air).
-     *   - If a full water block is encountered, it is skipped over—unless the block below it is
-     *     also a full water block, in which case the support is labeled as water;
-     *     or if the block immediately below a full water block is solid/lava, then that solid block is support.
-     * If no support is found within 50 blocks, it returns the original candidate.
-     */
+    // Existing helper methods remain, for example:
+    public static boolean isIgnoredFluid(BlockState state) {
+        return state.getFluidState().is(net.minecraft.tags.FluidTags.WATER) && !state.getFluidState().isSource();
+    }
+
+    public static boolean isFullWater(BlockState state) {
+        return state.getFluidState().is(net.minecraft.tags.FluidTags.WATER) && state.getFluidState().isSource();
+    }
+
+    // The original getPlayerStandingSpace (using the current bounding box) can remain unchanged:
+    public static BlockPos getPlayerStandingSpace(Player player) {
+        return getPlayerStandingSpaceOffset(player, 0);
+    }
+
+    // Updated getSupportingBlock that uses getPlayerStandingSpaceOffset for each scan:
     public static BlockPos getSupportingBlock(Player player) {
         Level world = Minecraft.getInstance().level;
         if (world == null || player == null) {
             return null;
         }
-        // Start with the block immediately below the player's standing space.
-        BlockPos standingSpace = getPlayerStandingSpace(player);
-        BlockPos candidate = (standingSpace != null)
-                ? standingSpace.below()
-                : new BlockPos(Mth.floor(player.getX()), Mth.floor(player.getY()) - 1, Mth.floor(player.getZ()));
 
-        BlockState state = world.getBlockState(candidate);
-        // If the candidate is not air, not an ignored fluid, and is not full water, and has a non-empty collision shape, return it.
-        if (!state.isAir() && !isIgnoredFluid(state) && !isFullWater(state) &&
-                !state.getCollisionShape(world, candidate).isEmpty()) {
-            return candidate;
-        }
-        // Otherwise, scan downward up to 50 blocks.
-        BlockPos scanPos = candidate;
-        for (int i = 0; i < 50; i++) {
-            BlockState scanState = world.getBlockState(scanPos);
-            // Handle full water separately.
-            if (isFullWater(scanState)) {
-                BlockPos next = scanPos.below();
-                BlockState nextState = world.getBlockState(next);
-                if (isFullWater(nextState)) {
-                    // Two consecutive full water blocks: support is water.
-                    return scanPos;
-                } else if (!nextState.isAir() && !isIgnoredFluid(nextState) &&
-                        (!nextState.getCollisionShape(world, next).isEmpty() || isFullWater(nextState))) {
-                    // If the block below a full water block is solid (or water), that's our support.
-                    return next;
+        // Scan downward from offset 0 to 50 blocks.
+        BlockPos support = null;
+        for (int offset = 0; offset < 50; offset++) {
+            BlockPos standingSpace = getPlayerStandingSpaceOffset(player, offset);
+            if (standingSpace == null) continue;
+            BlockPos candidate = standingSpace.below();
+            BlockState state = world.getBlockState(candidate);
+            // We consider a candidate valid if:
+            // • It's not air, and not an ignored fluid (flowing water)
+            // • AND either it's not full water OR (if full water) the vertical gap is small (i.e. offset <= 1)
+            if (!state.isAir() && !isIgnoredFluid(state)) {
+                if (!isFullWater(state)) {
+                    // Also, ignore non-occlusive blocks (like grass).
+                    if (!state.getCollisionShape(world, candidate).isEmpty()) {
+                        support = candidate;
+                        break;
+                    }
                 } else {
-                    // Skip over the water block.
-                    scanPos = next;
-                    continue;
+                    // If it's full water, only accept it if we're very near (offset 0 or 1)
+                    if (offset <= 1) {
+                        support = candidate;
+                        break;
+                    }
                 }
-            } else {
-                // For non-water blocks:
-                // Skip if air or ignored fluid.
-                if (scanState.isAir() || isIgnoredFluid(scanState)) {
-                    scanPos = scanPos.below();
-                    continue;
-                }
-                // If not full water and the collision shape is empty (e.g. grass), skip it.
-                if (scanState.getCollisionShape(world, scanPos).isEmpty()) {
-                    scanPos = scanPos.below();
-                    continue;
-                }
-                // Otherwise, we've found a solid (or lava, etc.) block.
-                return scanPos;
             }
         }
-        // If nothing is found after 50 blocks, return the original candidate.
-        return candidate;
+        // Fallback: if nothing was found, use the block directly below the player's current standing space.
+        if (support == null) {
+            BlockPos currentStanding = getPlayerStandingSpace(player);
+            support = (currentStanding != null) ? currentStanding.below() :
+                    new BlockPos(Mth.floor(player.getX()), Mth.floor(player.getY()) - 1, Mth.floor(player.getZ()));
+        }
+        return support;
     }
-
-
 
     /**
      * Returns a string representing the type of the supporting block.
@@ -144,25 +122,15 @@ public class StandingBlockUtil {
         if (state.isAir()) {
             return "Air";
         }
-        if (state.getFluidState().is(FluidTags.WATER)) {
+        if (state.getFluidState().is(net.minecraft.tags.FluidTags.WATER)) {
             return "Water";
         }
-        if (state.getFluidState().is(FluidTags.LAVA)) {
+        if (state.getFluidState().is(net.minecraft.tags.FluidTags.LAVA)) {
             return "Lava";
         }
-        if (state.getBlock() == Blocks.POWDER_SNOW) {
+        if (state.getBlock() == net.minecraft.world.level.block.Blocks.POWDER_SNOW) {
             return "Powdered Snow";
         }
-        // Return the block's name.
         return state.getBlock().getName().getString();
-    }
-
-    private static boolean isIgnoredFluid(BlockState state) {
-        // Flowing water (non-source water) should be ignored.
-        return state.getFluidState().is(FluidTags.WATER) && !state.getFluidState().isSource();
-    }
-
-    private static boolean isFullWater(BlockState state) {
-        return state.getFluidState().is(FluidTags.WATER) && state.getFluidState().isSource();
     }
 }
