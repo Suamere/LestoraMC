@@ -80,44 +80,52 @@ public class StandingBlockUtil {
                 : new BlockPos(Mth.floor(player.getX()), Mth.floor(player.getY()) - 1, Mth.floor(player.getZ()));
 
         BlockState state = world.getBlockState(candidate);
-        // If the candidate is not air and not an ignored fluid (flowing water)...
-        // But if it's full water, we want to scan downward.
-        if (!state.isAir() && !isIgnoredFluid(state)) {
-            if (!isFullWater(state)) {
-                // If it's not full water, it's a solid (or lava, or powdered snow, etc.)
-                return candidate;
-            }
+        // If the candidate is not air, not an ignored fluid, and is not full water, and has a non-empty collision shape, return it.
+        if (!state.isAir() && !isIgnoredFluid(state) && !isFullWater(state) &&
+                !state.getCollisionShape(world, candidate).isEmpty()) {
+            return candidate;
         }
         // Otherwise, scan downward up to 50 blocks.
         BlockPos scanPos = candidate;
         for (int i = 0; i < 50; i++) {
             BlockState scanState = world.getBlockState(scanPos);
-            if (scanState.isAir() || isIgnoredFluid(scanState)) {
-                scanPos = scanPos.below();
-                continue;
-            }
-            // If a full water block is encountered...
+            // Handle full water separately.
             if (isFullWater(scanState)) {
                 BlockPos next = scanPos.below();
                 BlockState nextState = world.getBlockState(next);
                 if (isFullWater(nextState)) {
                     // Two consecutive full water blocks: support is water.
-                    return next;
-                } else if (!nextState.isAir() && !isIgnoredFluid(nextState)) {
-                    // If the block below a full water block is solid (or lava, etc.), use that.
+                    return scanPos;
+                } else if (!nextState.isAir() && !isIgnoredFluid(nextState) &&
+                        (!nextState.getCollisionShape(world, next).isEmpty() || isFullWater(nextState))) {
+                    // If the block below a full water block is solid (or water), that's our support.
                     return next;
                 } else {
-                    // Otherwise, skip over the water block.
+                    // Skip over the water block.
                     scanPos = next;
                     continue;
                 }
+            } else {
+                // For non-water blocks:
+                // Skip if air or ignored fluid.
+                if (scanState.isAir() || isIgnoredFluid(scanState)) {
+                    scanPos = scanPos.below();
+                    continue;
+                }
+                // If not full water and the collision shape is empty (e.g. grass), skip it.
+                if (scanState.getCollisionShape(world, scanPos).isEmpty()) {
+                    scanPos = scanPos.below();
+                    continue;
+                }
+                // Otherwise, we've found a solid (or lava, etc.) block.
+                return scanPos;
             }
-            // If the block is solid or lava, we've found our support.
-            return scanPos;
         }
-        // If nothing is found after 50 blocks, just return the original candidate.
+        // If nothing is found after 50 blocks, return the original candidate.
         return candidate;
     }
+
+
 
     /**
      * Returns a string representing the type of the supporting block.
