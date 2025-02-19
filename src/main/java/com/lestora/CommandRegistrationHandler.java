@@ -1,10 +1,14 @@
 package com.lestora;
 
+import com.lestora.util.StandingBlockUtil;
+import com.lestora.util.Wetness;
+import com.lestora.util.WetnessUtil;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
@@ -22,6 +26,41 @@ public class CommandRegistrationHandler {
                         .executes(CommandRegistrationHandler::setHighlight)
                 )
         );
+
+        event.getDispatcher().register(Commands.literal("sb")
+                .executes(CommandRegistrationHandler::reportStandingBlock)
+        );
+
+        event.getDispatcher().register(Commands.literal("wetness")
+                .executes(CommandRegistrationHandler::reportWetness)
+        );
+    }
+
+    private static int reportWetness(CommandContext<CommandSourceStack> context) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) {
+            context.getSource().sendFailure(Component.literal("No player found."));
+            return 0;
+        }
+        Wetness wetness = WetnessUtil.getPlayerWetness(mc.player);
+        context.getSource().sendSuccess(() -> Component.literal("Player wetness: " + wetness.name()), false);
+        return 1;
+    }
+
+    private static int reportStandingBlock(CommandContext<CommandSourceStack> context) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) {
+            context.getSource().sendFailure(Component.literal("No player instance found."));
+            return 0;
+        }
+
+        BlockPos supportBlock = StandingBlockUtil.getPlayerStandingSpace(mc.player);
+        if (supportBlock != null) {
+            context.getSource().sendSuccess(() -> Component.literal("Standing Block: " + supportBlock.toShortString()), false);
+        } else {
+            context.getSource().sendSuccess(() -> Component.literal("No supporting block found."), false);
+        }
+        return 1;
     }
 
     private static int setHighlight(CommandContext<CommandSourceStack> context) {
@@ -38,8 +77,6 @@ public class CommandRegistrationHandler {
 
         UUID userId = Minecraft.getInstance().player.getUUID();
         HighlightConfig.setHighlightCenterAndRadius(userId, x, y, z, radius, world);
-//        context.getSource().sendSuccess(() -> Component.literal("Highlight radius set to " + radius
-//                + " at (" + x + ", " + y + ", " + z + ")"), true);
         return 1;
     }
 }
