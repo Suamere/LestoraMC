@@ -64,32 +64,25 @@ public class StandingBlockUtil {
         return getPlayerStandingSpaceOffset(player, 0);
     }
 
-    // Updated getSupportingBlock that uses getPlayerStandingSpaceOffset for each scan:
     public static BlockPos getSupportingBlock(Player player) {
         Level world = Minecraft.getInstance().level;
         if (world == null || player == null) {
             return null;
         }
 
-        // Scan downward from offset 0 to 50 blocks.
         BlockPos support = null;
         for (int offset = 0; offset < 50; offset++) {
             BlockPos standingSpace = getPlayerStandingSpaceOffset(player, offset);
             if (standingSpace == null) continue;
             BlockPos candidate = standingSpace.below();
             BlockState state = world.getBlockState(candidate);
-            // We consider a candidate valid if:
-            // • It's not air, and not an ignored fluid (flowing water)
-            // • AND either it's not full water OR (if full water) the vertical gap is small (i.e. offset <= 1)
             if (!state.isAir() && !isIgnoredFluid(state)) {
                 if (!isFullWater(state)) {
-                    // Also, ignore non-occlusive blocks (like grass).
                     if (!state.getCollisionShape(world, candidate).isEmpty()) {
                         support = candidate;
                         break;
                     }
                 } else {
-                    // If it's full water, only accept it if we're very near (offset 0 or 1)
                     if (offset <= 1) {
                         support = candidate;
                         break;
@@ -97,7 +90,6 @@ public class StandingBlockUtil {
                 }
             }
         }
-        // Fallback: if nothing was found, use the block directly below the player's current standing space.
         if (support == null) {
             BlockPos currentStanding = getPlayerStandingSpace(player);
             support = (currentStanding != null) ? currentStanding.below() :
