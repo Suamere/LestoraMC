@@ -6,7 +6,8 @@
   "refmap": "mixins.lestora.refmap.json",
   "mixins": [
     "LevelRendererMixin",
-    "ClientLevelMixin"
+    "ClientLevelMixin",
+    "EntityMixin"
   ],
   "client": [],
   "server": []

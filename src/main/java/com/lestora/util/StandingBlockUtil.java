@@ -88,18 +88,6 @@ public class StandingBlockUtil {
             return state.getBlock().getName().getString();
         }
 
-        if (state.isAir()) {
-            return "Air";
-        }
-        if (state.getFluidState().is(net.minecraft.tags.FluidTags.WATER)) {
-            return "WaterX";
-        }
-        if (state.getFluidState().is(net.minecraft.tags.FluidTags.LAVA)) {
-            return "Lava";
-        }
-        if (state.getBlock() == net.minecraft.world.level.block.Blocks.POWDER_SNOW) {
-            return "Powdered Snow";
-        }
         return state.getBlock().getName().getString();
     }
 }

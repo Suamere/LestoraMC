@@ -4,6 +4,6 @@ public enum Wetness {
     FULLY_SUBMERGED,
     NEARLY_SUBMERGED,
     SOAKED,
-    SPLASHED,
+    DAMP,
     DRY
 }
