@@ -1,19 +1,23 @@
 package com.lestora;
 
+import com.lestora.util.TestLightConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-import java.util.List;
 import java.util.UUID;
 
 @Mod.EventBusSubscriber
-public class HighlightBlockBreakListener {
+public class EventSubscribor {
 
     @SubscribeEvent
     public static void onBlockBreak(BlockEvent.BreakEvent event) {
@@ -35,6 +39,30 @@ public class HighlightBlockBreakListener {
         if (config == null || config.getHighlightRadius() <= 0) return;
 
         config.add(placedPos, level);
+    }
+
+    @SubscribeEvent
+    public static void onClientTick(TickEvent.ClientTickEvent event) {
+        var level = Minecraft.getInstance().level;
+        if (level == null) return;
+        for (Player player : level.players()) {
+            TestLightConfig.tryAddEntity(player);
+        }
+        TestLightConfig.tryUpdateEntityPositions();
+    }
+
+    @SubscribeEvent
+    public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
+        if (event.getEntity() instanceof ItemEntity itemEntity) {
+            if (itemEntity.getItem().getItem() == Items.TORCH) {
+                TestLightConfig.tryAddEntity(itemEntity);
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onEntityLeaveLevel(EntityLeaveLevelEvent event) {
+        TestLightConfig.tryRemoveEntity(event.getEntity());
     }
 
 //    @SubscribeEvent

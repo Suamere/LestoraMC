@@ -23,9 +23,10 @@ public abstract class LightTextureMixin {
             )
     )
     private int overrideGetEmission(BlockLightEngine instance, long pos, BlockState state) {
-        // Compare the long representation of the block's position with the test position.
-        if (pos == TestLightConfig.getCurrentPos().asLong()) {
-            return 14;
+        for (var currentPos : TestLightConfig.getCurrentPositions()) {
+            if (pos == currentPos.asLong()) {
+                return 14;
+            }
         }
         return getEmission(pos, state);
     }
