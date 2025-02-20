@@ -3,7 +3,6 @@ package com.lestora;
 import com.lestora.util.TestLightConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Items;
@@ -50,24 +49,26 @@ public class EventSubscribor {
     private static final Map<UUID, Boolean> previousTorchState = new ConcurrentHashMap<>();
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
-        var level = Minecraft.getInstance().level;
-        if (level == null) return;
-        for (Player player : level.players()) {
-            boolean currentlyHoldingTorch =
-                    player.getMainHandItem().getItem() == Items.TORCH ||
-                            player.getOffhandItem().getItem() == Items.TORCH;
-            UUID uuid = player.getUUID();
-            Boolean previous = previousTorchState.get(uuid);
-            if (previous == null || previous != currentlyHoldingTorch) {
-                previousTorchState.put(uuid, currentlyHoldingTorch);
-                if (currentlyHoldingTorch) {
-                    TestLightConfig.tryAddEntity(player);
-                } else {
-                    TestLightConfig.tryRemoveEntity(player);
+        if (TestLightConfig.getEnabled()) {
+            var level = Minecraft.getInstance().level;
+            if (level == null) return;
+            for (Player player : level.players()) {
+                boolean currentlyHoldingTorch =
+                        player.getMainHandItem().getItem() == Items.TORCH ||
+                                player.getOffhandItem().getItem() == Items.TORCH;
+                UUID uuid = player.getUUID();
+                Boolean previous = previousTorchState.get(uuid);
+                if (previous == null || previous != currentlyHoldingTorch) {
+                    previousTorchState.put(uuid, currentlyHoldingTorch);
+                    if (currentlyHoldingTorch) {
+                        TestLightConfig.tryAddEntity(player);
+                    } else {
+                        TestLightConfig.tryRemoveEntity(player);
+                    }
                 }
             }
+            TestLightConfig.tryUpdateEntityPositions();
         }
-        TestLightConfig.tryUpdateEntityPositions();
     }
 
     @SubscribeEvent
@@ -76,9 +77,7 @@ public class EventSubscribor {
             // Delay the check by one tick
             Minecraft.getInstance().execute(() -> {
                 var item = itemEntity.getItem().getItem();
-                LOGGER.info("Delayed check item: {}", item);
                 if (item == Items.TORCH) {
-                    LOGGER.info("Delayed check found Torch");
                     TestLightConfig.tryAddEntity(itemEntity);
                 }
             });

@@ -22,6 +22,7 @@ Upcoming Development: Wetness == Coldness... especially in cold biomes.
 ## Commands
 - Use the command `/lestora highlightRadius <radius>` to highlight a spherical area of breakable blocks from your current location.
 - Use the command `/lestora showDebug [true/false]` to show current debug info related to beta development.
+- Use the command `/lestora dynamicLighting [true/false]` to enable or disable dynamic lighting in this mod. (Defaults to true)
 
 ## Compatibility
 - **Minecraft Version:** 1.21.4

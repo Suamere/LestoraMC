@@ -30,6 +30,20 @@ public class CommandRegistrationHandler {
                                 .executes(CommandRegistrationHandler::setHighlight)
                         )
                 )
+                .then(Commands.literal("dynamicLighting")
+                        // If no argument is provided, default to true.
+                        .executes(ctx -> {
+                            DebugOverlay.setShowDebug(true);
+                            return 1;
+                        })
+                        .then(Commands.argument("value", BoolArgumentType.bool())
+                                .executes(ctx -> {
+                                    boolean value = BoolArgumentType.getBool(ctx, "value");
+                                    TestLightConfig.setEnabled(value);
+                                    return 1;
+                                })
+                        )
+                )
                 .then(Commands.literal("showDebug")
                         // If no argument is provided, default to true.
                         .executes(ctx -> {

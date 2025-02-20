@@ -23,9 +23,11 @@ public abstract class LightTextureMixin {
             )
     )
     private int overrideGetEmission(BlockLightEngine instance, long pos, BlockState state) {
-        for (var currentPos : TestLightConfig.getCurrentPositions()) {
-            if (pos == currentPos.asLong()) {
-                return 14;
+        if (TestLightConfig.getEnabled()) {
+            for (var currentPos : TestLightConfig.getCurrentPositions()) {
+                if (pos == currentPos.asLong()) {
+                    return 14;
+                }
             }
         }
         return getEmission(pos, state);

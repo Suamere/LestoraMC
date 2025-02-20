@@ -16,6 +16,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public final class TestLightConfig {
+    private static boolean enabled = true;
     public static final Logger LOGGER = LogManager.getLogger("lestora");
     private static final Lock lock = new ReentrantLock();
     private static final ConcurrentHashMap<UUID, BlockPos> currentPositions = new ConcurrentHashMap<>();
@@ -72,6 +73,45 @@ public final class TestLightConfig {
                 ClientChunkCache chunkSource = level.getChunkSource();
                 LevelLightEngine lightingEngine = chunkSource.getLightEngine();
                 lightingEngine.checkBlock(oldPos);
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public static boolean getEnabled() {
+        return enabled;
+    }
+
+    public static void setEnabled(boolean newVal) {
+        lock.lock();
+        try {
+            if (newVal == enabled) return;
+
+            enabled = newVal;
+            if (newVal == false) {
+                for (Entity e : registeredEntities.values()) {
+                    BlockPos oldPos = currentPositions.getOrDefault(e.getUUID(), BlockPos.ZERO);
+
+                    var level = Minecraft.getInstance().level;
+                    if (level != null) {
+                        ClientChunkCache chunkSource = level.getChunkSource();
+                        LevelLightEngine lightingEngine = chunkSource.getLightEngine();
+                        lightingEngine.checkBlock(oldPos);
+                    }
+                }
+            }
+            else {
+                for (Entity e : registeredEntities.values()) {
+                    BlockPos newPos = e.blockPosition();
+
+                    var level = Minecraft.getInstance().level;
+                    if (level != null) {
+                        ClientChunkCache chunkSource = level.getChunkSource();
+                        LevelLightEngine lightingEngine = chunkSource.getLightEngine();
+                        lightingEngine.checkBlock(newPos);
+                    }
+                }
             }
         } finally {
             lock.unlock();
