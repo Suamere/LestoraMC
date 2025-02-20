@@ -65,18 +65,10 @@ public class CommandRegistrationHandler {
             context.getSource().sendFailure(Component.literal("No client world loaded."));
             return 0;
         }
-        int level = IntegerArgumentType.getInteger(context, "lightLevel");
-        TestLightConfig.setTestLightLevel(level);
-
         BlockPos pos = TestLightConfig.getTestPos();
-        // ClientChunkCache is what getChunkSource() returns.
         ClientChunkCache chunkSource = mc.level.getChunkSource();
-        // getLightEngine() returns a LevelLightingEngine.
         LevelLightEngine lightingEngine = chunkSource.getLightEngine();
-
-        // This will trigger both the block and skylight engines to recheck the block.
         lightingEngine.checkBlock(pos);
-        // Optionally, run any queued light updates if needed:
         lightingEngine.runLightUpdates();
 
         return 1;
