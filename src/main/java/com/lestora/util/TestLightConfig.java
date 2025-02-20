@@ -1,29 +1,43 @@
 package com.lestora.util;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientChunkCache;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.lighting.LevelLightEngine;
+
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public final class TestLightConfig {
-    private static int testLightLevel = 14;
-    private static BlockPos testPos = BlockPos.ZERO;
+    private static final Lock lock = new ReentrantLock();
+    private static BlockPos currentPos = BlockPos.ZERO;
 
-    private TestLightConfig() {}
-
-    public static void setTestLightLevel(int level) {
-        if (level < 0 || level > 14) {
-            throw new IllegalArgumentException("Light level must be between 0 and 14");
+    public static BlockPos getCurrentPos() {
+        lock.lock();
+        try {
+            return currentPos;
+        } finally {
+            lock.unlock();
         }
-        testLightLevel = level;
     }
 
-    public static int getTestLightLevel() {
-        return testLightLevel;
-    }
+    public static void tryUpdateLightPos(BlockPos newPos) {
+        lock.lock();
+        try {
+            if (!newPos.equals(currentPos)) {
+                BlockPos oldSpace = currentPos;
+                currentPos = newPos.immutable();
 
-    public static void setTestPos(BlockPos pos) {
-        testPos = pos.immutable();
-    }
-
-    public static BlockPos getTestPos() {
-        return testPos;
+                var level = Minecraft.getInstance().level;
+                if (level != null) {
+                    ClientChunkCache chunkSource = level.getChunkSource();
+                    LevelLightEngine lightingEngine = chunkSource.getLightEngine();
+                    lightingEngine.checkBlock(newPos);
+                    lightingEngine.checkBlock(oldSpace);
+                }
+            }
+        } finally {
+            lock.unlock();
+        }
     }
 }

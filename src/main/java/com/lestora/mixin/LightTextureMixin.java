@@ -1,7 +1,6 @@
 package com.lestora.mixin;
 
 import com.lestora.util.TestLightConfig;
-import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.lighting.BlockLightEngine;
 import org.spongepowered.asm.mixin.Mixin;
@@ -25,8 +24,8 @@ public abstract class LightTextureMixin {
     )
     private int overrideGetEmission(BlockLightEngine instance, long pos, BlockState state) {
         // Compare the long representation of the block's position with the test position.
-        if (pos == TestLightConfig.getTestPos().asLong()) {
-            return TestLightConfig.getTestLightLevel();
+        if (pos == TestLightConfig.getCurrentPos().asLong()) {
+            return 14;
         }
         return getEmission(pos, state);
     }

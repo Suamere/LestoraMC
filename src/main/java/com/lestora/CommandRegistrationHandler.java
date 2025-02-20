@@ -12,18 +12,11 @@ import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.LightLayer;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.LightChunkGetter;
-import net.minecraft.world.level.lighting.BlockLightEngine;
 import net.minecraft.world.level.lighting.LevelLightEngine;
-import net.minecraft.world.level.redstone.Orientation;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-import java.lang.reflect.Method;
 import java.util.UUID;
 
 @Mod.EventBusSubscriber(value = net.minecraftforge.api.distmarker.Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
@@ -35,11 +28,6 @@ public class CommandRegistrationHandler {
                 .then(Commands.literal("highlightRadius")
                         .then(Commands.argument("radius", DoubleArgumentType.doubleArg(0))
                                 .executes(CommandRegistrationHandler::setHighlight)
-                        )
-                )
-                .then(Commands.literal("test")
-                        .then(Commands.argument("lightLevel", IntegerArgumentType.integer(0, 14))
-                                .executes(CommandRegistrationHandler::testNeighborChanged)
                         )
                 )
                 .then(Commands.literal("showDebug")
@@ -57,21 +45,6 @@ public class CommandRegistrationHandler {
                         )
                 )
         );
-    }
-
-    private static int testNeighborChanged(CommandContext<CommandSourceStack> context) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) {
-            context.getSource().sendFailure(Component.literal("No client world loaded."));
-            return 0;
-        }
-        BlockPos pos = TestLightConfig.getTestPos();
-        ClientChunkCache chunkSource = mc.level.getChunkSource();
-        LevelLightEngine lightingEngine = chunkSource.getLightEngine();
-        lightingEngine.checkBlock(pos);
-        lightingEngine.runLightUpdates();
-
-        return 1;
     }
 
     private static int setHighlight(CommandContext<CommandSourceStack> context) {

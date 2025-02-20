@@ -18,14 +18,7 @@ public class PlayerPositionUpdater {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null && mc.level != null) {
             BlockPos currentPos = mc.player.blockPosition();
-            // Only run the lighting update if the position has changed.
-            if (!currentPos.equals(TestLightConfig.getTestPos())) {
-                TestLightConfig.setTestPos(currentPos);
-                ClientChunkCache chunkSource = mc.level.getChunkSource();
-                LevelLightEngine lightingEngine = chunkSource.getLightEngine();
-                lightingEngine.checkBlock(currentPos);
-                lightingEngine.runLightUpdates();
-            }
+            TestLightConfig.tryUpdateLightPos(currentPos);
         }
     }
 }
