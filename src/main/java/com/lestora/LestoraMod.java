@@ -1,6 +1,10 @@
 package com.lestora;
 
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.event.config.ModConfigEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
@@ -18,7 +22,7 @@ import net.minecraft.world.level.Level;
 public class LestoraMod {
 //    private static final Logger LOGGER = LogManager.getLogger();
 
-    public LestoraMod() {
+    public LestoraMod(FMLJavaModLoadingContext constructContext) {
 //        LoggerContext context = (LoggerContext) LogManager.getContext(false);
 //        Configuration config = context.getConfiguration();
 //        PatternLayout layout = PatternLayout.newBuilder()
@@ -33,8 +37,8 @@ public class LestoraMod {
 //        appender.start();
 //        config.getRootLogger().addAppender(appender, org.apache.logging.log4j.Level.INFO, null);
 //        context.updateLoggers();
-//
-//        LOGGER.info("Testmod loaded with programmatic appender.");
+
+        constructContext.registerConfig(ModConfig.Type.COMMON, LestoraConfig.COMMON_CONFIG, "lestora-common.toml");
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(this);
     }
 

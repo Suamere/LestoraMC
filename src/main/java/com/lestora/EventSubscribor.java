@@ -3,9 +3,9 @@ package com.lestora;
 import com.lestora.util.TestLightConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
@@ -13,6 +13,7 @@ import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -46,23 +47,34 @@ public class EventSubscribor {
         config.add(placedPos, level);
     }
 
-    private static final Map<UUID, Boolean> previousTorchState = new ConcurrentHashMap<>();
+    private static final Map<UUID, ResourceLocation> previousTorchState = new ConcurrentHashMap<>();
+
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (TestLightConfig.getEnabled()) {
             var level = Minecraft.getInstance().level;
             if (level == null) return;
             for (Player player : level.players()) {
-                boolean currentlyHoldingTorch =
-                        player.getMainHandItem().getItem() == Items.TORCH ||
-                                player.getOffhandItem().getItem() == Items.TORCH;
+                var mainStack = player.getMainHandItem();
+                var offStack = player.getOffhandItem();
+                ResourceLocation mhi = mainStack != null ? ForgeRegistries.ITEMS.getKey(mainStack.getItem()) : null;
+                ResourceLocation ohi = offStack != null ? ForgeRegistries.ITEMS.getKey(offStack.getItem()) : null;
+                Integer mhr = (mhi != null) ? ConfigEventHandler.getLightLevel(mhi) : null;
+                Integer ohr = (ohi != null) ? ConfigEventHandler.getLightLevel(ohi) : null;
+                // Pick main hand if available, else offhand
+                ResourceLocation resourceLocation = (mhr != null) ? mhi : ((ohr != null) ? ohi : null);
+
                 UUID uuid = player.getUUID();
-                Boolean previous = previousTorchState.get(uuid);
-                if (previous == null || previous != currentlyHoldingTorch) {
-                    previousTorchState.put(uuid, currentlyHoldingTorch);
-                    if (currentlyHoldingTorch) {
-                        TestLightConfig.tryAddEntity(player);
+                ResourceLocation previous = previousTorchState.get(uuid);
+                boolean changed = (previous == null && resourceLocation != null)
+                        || (previous != null && !previous.equals(resourceLocation));
+
+                if (changed) {
+                    if (resourceLocation != null) {
+                        previousTorchState.put(uuid, resourceLocation);
+                        TestLightConfig.tryAddEntity(player, resourceLocation);
                     } else {
+                        previousTorchState.remove(uuid);
                         TestLightConfig.tryRemoveEntity(player);
                     }
                 }
@@ -71,14 +83,16 @@ public class EventSubscribor {
         }
     }
 
+
+
     @SubscribeEvent
     public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
         if (event.getEntity() instanceof ItemEntity itemEntity) {
-            // Delay the check by one tick
             Minecraft.getInstance().execute(() -> {
-                var item = itemEntity.getItem().getItem();
-                if (item == Items.TORCH) {
-                    TestLightConfig.tryAddEntity(itemEntity);
+                var resourceLocation = ForgeRegistries.ITEMS.getKey(itemEntity.getItem().getItem());
+                var lightLevel = ConfigEventHandler.getLightLevel(resourceLocation);
+                if (lightLevel != null) {
+                    TestLightConfig.tryAddEntity(itemEntity, resourceLocation);
                 }
             });
         }

@@ -3,6 +3,7 @@ package com.lestora.util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientChunkCache;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.lighting.LevelLightEngine;
 import org.apache.logging.log4j.LogManager;
@@ -10,21 +11,27 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public final class TestLightConfig {
-    private static boolean enabled = true;
     public static final Logger LOGGER = LogManager.getLogger("lestora");
-    private static final Lock lock = new ReentrantLock();
-    private static final ConcurrentHashMap<UUID, BlockPos> currentPositions = new ConcurrentHashMap<>();
-    private static final ConcurrentHashMap<UUID, Entity> registeredEntities = new ConcurrentHashMap<>();
 
-    public static Collection<BlockPos> getCurrentPositions() {
+    public record EntityPair(Entity first, ResourceLocation second) {}
+    public record PosAndName(BlockPos position, ResourceLocation resource) {}
+
+    private static boolean enabled = true;
+    private static final Lock lock = new ReentrantLock();
+    private static final ConcurrentHashMap<UUID, PosAndName> currentPositions = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<UUID, EntityPair> registeredEntities = new ConcurrentHashMap<>();
+
+    public static Collection<PosAndName> getCurrentPositions() {
         lock.lock();
         try {
+            // Instead, return the collection of two values... the BlockPos and the ItemName
             return new ArrayList<>(currentPositions.values());
         } finally {
             lock.unlock();
@@ -34,18 +41,19 @@ public final class TestLightConfig {
     public static void tryUpdateEntityPositions() {
         lock.lock();
         try {
-            for (Entity e : registeredEntities.values()) {
-                BlockPos newPos = e.blockPosition();
-                BlockPos oldPos = currentPositions.getOrDefault(e.getUUID(), BlockPos.ZERO);
+            for (Map.Entry<UUID, EntityPair> entry : registeredEntities.entrySet()) {
+                var e = entry.getValue();
+                BlockPos newPos = e.first().blockPosition();
+                PosAndName oldPos = currentPositions.getOrDefault(e.first().getUUID(), new PosAndName(BlockPos.ZERO, null));
                 if (!newPos.equals(oldPos)) {
-                    currentPositions.put(e.getUUID(), newPos.immutable());
+                    currentPositions.put(e.first().getUUID(), new PosAndName(newPos.immutable(), e.second()));
 
                     var level = Minecraft.getInstance().level;
                     if (level != null) {
                         ClientChunkCache chunkSource = level.getChunkSource();
                         LevelLightEngine lightingEngine = chunkSource.getLightEngine();
                         lightingEngine.checkBlock(newPos);
-                        lightingEngine.checkBlock(oldPos);
+                        lightingEngine.checkBlock(oldPos.position);
                     }
                 }
             }
@@ -54,10 +62,10 @@ public final class TestLightConfig {
         }
     }
 
-    public static void tryAddEntity(Entity e) {
+    public static void tryAddEntity(Entity e, ResourceLocation resource) {
         lock.lock();
         try {
-            registeredEntities.putIfAbsent(e.getUUID(), e);
+            registeredEntities.putIfAbsent(e.getUUID(), new EntityPair(e, resource));
         } finally {
             lock.unlock();
         }
@@ -72,7 +80,7 @@ public final class TestLightConfig {
             if (level != null && oldPos != null) {
                 ClientChunkCache chunkSource = level.getChunkSource();
                 LevelLightEngine lightingEngine = chunkSource.getLightEngine();
-                lightingEngine.checkBlock(oldPos);
+                lightingEngine.checkBlock(oldPos.position);
             }
         } finally {
             lock.unlock();
@@ -90,20 +98,20 @@ public final class TestLightConfig {
 
             enabled = newVal;
             if (newVal == false) {
-                for (Entity e : registeredEntities.values()) {
-                    BlockPos oldPos = currentPositions.getOrDefault(e.getUUID(), BlockPos.ZERO);
+                for (EntityPair e : registeredEntities.values()) {
+                    var oldPos = currentPositions.getOrDefault(e.first().getUUID(), new PosAndName(BlockPos.ZERO, null));
 
                     var level = Minecraft.getInstance().level;
                     if (level != null) {
                         ClientChunkCache chunkSource = level.getChunkSource();
                         LevelLightEngine lightingEngine = chunkSource.getLightEngine();
-                        lightingEngine.checkBlock(oldPos);
+                        lightingEngine.checkBlock(oldPos.position);
                     }
                 }
             }
             else {
-                for (Entity e : registeredEntities.values()) {
-                    BlockPos newPos = e.blockPosition();
+                for (EntityPair e : registeredEntities.values()) {
+                    BlockPos newPos = e.first().blockPosition();
 
                     var level = Minecraft.getInstance().level;
                     if (level != null) {

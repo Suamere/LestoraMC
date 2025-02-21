@@ -1,5 +1,6 @@
 package com.lestora.mixin;
 
+import com.lestora.ConfigEventHandler;
 import com.lestora.util.TestLightConfig;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.lighting.BlockLightEngine;
@@ -25,8 +26,9 @@ public abstract class LightTextureMixin {
     private int overrideGetEmission(BlockLightEngine instance, long pos, BlockState state) {
         if (TestLightConfig.getEnabled()) {
             for (var currentPos : TestLightConfig.getCurrentPositions()) {
-                if (pos == currentPos.asLong()) {
-                    return 14;
+                if (pos == currentPos.position().asLong()) {
+                    var lightLevel = ConfigEventHandler.getLightLevel(currentPos.resource());
+                    if (lightLevel != null) { return lightLevel; }
                 }
             }
         }

@@ -1,27 +1,24 @@
 package com.lestora;
 
+import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.lestora.util.TestLightConfig;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
-import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientChunkCache;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.lighting.LevelLightEngine;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
+import java.io.File;
 import java.util.UUID;
 
 @Mod.EventBusSubscriber(value = net.minecraftforge.api.distmarker.Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class CommandRegistrationHandler {
-
     @SubscribeEvent
     public static void onRegisterClientCommands(RegisterClientCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("lestora")
@@ -57,6 +54,15 @@ public class CommandRegistrationHandler {
                                     return 1;
                                 })
                         )
+                )
+                .then(Commands.literal("reloadConfig")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(ctx -> {
+                            File configFile = new File("config/lestora-common.toml");
+                            CommentedFileConfig configData = CommentedFileConfig.builder(configFile).build();
+                            configData.load();
+                            return 1;
+                        })
                 )
         );
     }
