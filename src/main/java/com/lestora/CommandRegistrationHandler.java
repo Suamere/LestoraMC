@@ -13,6 +13,7 @@ import net.minecraft.world.level.Level;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import java.io.File;
 import java.util.UUID;
@@ -55,15 +56,42 @@ public class CommandRegistrationHandler {
                                 })
                         )
                 )
-                .then(Commands.literal("reloadConfig")
-                        .requires(source -> source.hasPermission(2))
+                .then(Commands.literal("whatAmIHolding")
                         .executes(ctx -> {
-                            File configFile = new File("config/lestora-common.toml");
-                            CommentedFileConfig configData = CommentedFileConfig.builder(configFile).build();
-                            configData.load();
+                            // Get the client player directly.
+                            var player = Minecraft.getInstance().player;
+                            if (player == null) {
+                                ctx.getSource().sendFailure(Component.literal("This command can only be run by a player."));
+                                return 0;
+                            }
+
+                            // Get the main and off hand item stacks.
+                            var mainStack = player.getMainHandItem();
+                            var offStack = player.getOffhandItem();
+
+                            // Get the ResourceLocation (official item name) for each item.
+                            var mainRL = ForgeRegistries.ITEMS.getKey(mainStack.getItem());
+                            var offRL = ForgeRegistries.ITEMS.getKey(offStack.getItem());
+
+                            // Format the messages. If the hand is empty, say so.
+                            String mainMsg = "Main Hand: " + (mainRL != null ? mainRL.toString() : "Empty");
+                            String offMsg = "Off Hand: " + (offRL != null ? offRL.toString() : "Empty");
+
+                            // Send the messages privately to the player.
+                            ctx.getSource().sendSuccess(() -> Component.literal(mainMsg), false);
+                            ctx.getSource().sendSuccess(() -> Component.literal(offMsg), false);
                             return 1;
                         })
                 )
+//                .then(Commands.literal("reloadConfig")
+//                        .requires(source -> source.hasPermission(2))
+//                        .executes(ctx -> {
+//                            File configFile = new File("config/lestora-common.toml");
+//                            CommentedFileConfig configData = CommentedFileConfig.builder(configFile).build();
+//                            configData.load();
+//                            return 1;
+//                        })
+//                )
         );
     }
 

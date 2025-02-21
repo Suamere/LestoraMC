@@ -9,7 +9,8 @@ Next Development: Learning to swim.  Time in water, Time in game, Particular pot
 Upcoming Development: Wetness == Coldness... especially in cold biomes.
 
 ## Features
-- **Dynamic Lighting:** Temporarily added some dynamic lighting, because apparently there's no good Forge mod that works on 1.21.3+
+- **Configuration:** Added lestora-common.toml, currently for configuring dynamic lighting.
+- **Dynamic Lighting:** Added some dynamic lighting, because apparently there's no good Forge mod that works on 1.21+.
 - **Client-Side Only (Currently):** Works locally without affecting multiplayer sessions.
 - **Highlight Blocks:** Highlights solid blocks within a specified radius sphere.  This is a personal test tool I used to get the mod published with some functionality.  I use it to "dig a crater".  It doesn't actually do anything, but it highlights where you should dig to keep a spherical hole.  Use Zero to disable.
 - **Wetness:** In the near future, one form of complexity will be swimming and temperature.  At the moment, you can view the debug info with the showDebug command.  This will tell you the current level of wetness, and your supporting block.  It currently shows you instantly dry out of water, but I'll have dampness persist longer soon.
@@ -23,6 +24,7 @@ Upcoming Development: Wetness == Coldness... especially in cold biomes.
 - Use the command `/lestora highlightRadius <radius>` to highlight a spherical area of breakable blocks from your current location.
 - Use the command `/lestora showDebug [true/false]` to show current debug info related to beta development.
 - Use the command `/lestora dynamicLighting [true/false]` to enable or disable dynamic lighting in this mod. (Defaults to true)
+- Use the command `/lestora whatAmIHolding` to print out the official name of the item you're holding.  Currently used to help populate the config file for dynamic lighting.
 
 ## Compatibility
 - **Minecraft Version:** 1.21.4

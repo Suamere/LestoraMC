@@ -62,7 +62,10 @@ public class EventSubscribor {
                 Integer mhr = (mhi != null) ? ConfigEventHandler.getLightLevel(mhi) : null;
                 Integer ohr = (ohi != null) ? ConfigEventHandler.getLightLevel(ohi) : null;
                 // Pick main hand if available, else offhand
-                ResourceLocation resourceLocation = (mhr != null) ? mhi : ((ohr != null) ? ohi : null);
+                ResourceLocation resourceLocation = null;
+                if (mhr != null && ohr != null) { resourceLocation = (mhr > ohr) ? mhi : ohi; }
+                else if (mhr != null) resourceLocation = mhi;
+                else if (ohr != null) resourceLocation = ohi;
 
                 UUID uuid = player.getUUID();
                 ResourceLocation previous = previousTorchState.get(uuid);

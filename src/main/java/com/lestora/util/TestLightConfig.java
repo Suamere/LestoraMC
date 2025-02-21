@@ -65,7 +65,17 @@ public final class TestLightConfig {
     public static void tryAddEntity(Entity e, ResourceLocation resource) {
         lock.lock();
         try {
-            registeredEntities.putIfAbsent(e.getUUID(), new EntityPair(e, resource));
+            registeredEntities.compute(e.getUUID(), (uuid, existingPair) -> {
+                if (existingPair == null) {
+                    // No entry yet, so add it.
+                    return new EntityPair(e, resource);
+                } else if (!existingPair.second().equals(resource)) {
+                    // The resource differs, so update the pair.
+                    return new EntityPair(e, resource);
+                }
+                // Otherwise, keep the existing pair.
+                return existingPair;
+            });
         } finally {
             lock.unlock();
         }
