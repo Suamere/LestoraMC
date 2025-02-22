@@ -90,7 +90,7 @@ public class EventSubscribor {
 
         var clientPlayer = Minecraft.getInstance().player;
         if (clientPlayer != null) {
-            LestoraPlayer.get(clientPlayer).calc();
+            LestoraPlayer.get(clientPlayer).calc(clientPlayer);
         }
     }
 

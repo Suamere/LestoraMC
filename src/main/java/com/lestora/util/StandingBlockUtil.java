@@ -20,7 +20,7 @@ public class StandingBlockUtil {
         BlockPos supportingPos = player.getOnPos();
         var blk = world.getBlockState(supportingPos).getBlock();
 
-        if (blk == Blocks.AIR || blk == Blocks.WATER) {
+        if (blk == Blocks.AIR || blk == Blocks.CAVE_AIR || blk == Blocks.WATER) {
             supportingPos = getBlockPos(player, world, supportingPos, -1, blk == Blocks.WATER, lastBlockSolid);
         }
 

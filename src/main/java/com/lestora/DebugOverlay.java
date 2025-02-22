@@ -37,28 +37,26 @@ public class DebugOverlay {
         var lestoraPlayer = LestoraPlayer.get(mc.player);
         var supportPos = lestoraPlayer.getSupportingBlock();
 
-        Optional<Registry<Biome>> maybeBiomeRegistry = mc.level.registryAccess().registries()
-                .filter(entry -> entry.key().equals(Registries.BIOME))
-                .map(entry -> (Registry<Biome>) entry.value())
-                .findFirst();
-
-        var biomeName = "Empty";
-        if (maybeBiomeRegistry.isPresent()) {
-            ResourceLocation biomeResource = maybeBiomeRegistry.get().getKey(lestoraPlayer.getBiome());
-            if (biomeResource != null) {
-                biomeName = biomeResource.toString();
-            }
-        }
+//        Optional<Registry<Biome>> maybeBiomeRegistry = mc.level.registryAccess().registries()
+//                .filter(entry -> entry.key().equals(Registries.BIOME))
+//                .map(entry -> (Registry<Biome>) entry.value())
+//                .findFirst();
+//
+//        var biomeName = "Empty";
+//        if (maybeBiomeRegistry.isPresent()) {
+//            ResourceLocation biomeResource = maybeBiomeRegistry.get().getKey(lestoraPlayer.getBiome());
+//            if (biomeResource != null) {
+//                biomeName = biomeResource.toString();
+//            }
+//        }
 
         // Construct your debug strings.
         String text1 = "Wetness: " + lestoraPlayer.getWetness();
         String text2 = "Supporting Block: " + StandingBlockUtil.getSupportingBlockType(supportPos) + " " + supportPos.getSupportingPos();
         String text3 = "Body Temp: " + lestoraPlayer.getBodyTemp();
-        String text4 = "Biome: " + biomeName;
-        String text5 = "Biome Temp: " + ConfigBiomeTempEventHandler.getBiomeTemp(lestoraPlayer.getBiome());
 
         // Draw them with a starting y of 10 and 15px spacing.
-        drawCenteredLines(guiGraphics, mc, 10, 15, text1, text2, text3, text4, text5);
+        drawCenteredLines(guiGraphics, mc, 10, 15, text1, text2, text3);
     }
 
     private static void drawCenteredLines(GuiGraphics guiGraphics, Minecraft mc, int startY, int lineSpacing, String... lines) {

@@ -11,6 +11,7 @@ import com.lestora.util.StandingBlockUtil;
 import com.lestora.util.Wetness;
 import com.lestora.util.WetnessUtil;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
@@ -19,13 +20,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.registries.ForgeRegistries;
 
 public class LestoraPlayer {
-    private final Player mcPlayer;
+    private Player mcPlayer;
     private final UUID uuid;
     private EntityBlockInfo supportingBlock;
     private Wetness wetness;
@@ -41,8 +40,12 @@ public class LestoraPlayer {
     // Timestamp in milliseconds
     private long lastUpdateTime = 0;
 
+    // Cache of nearby block states (cube from -5 to 5 in x,y,z)
+    private final Map<BlockPos, BlockState> cachedBlockStates = new HashMap<>();
+
     // In-memory static collection of players
     private static final Map<UUID, LestoraPlayer> players = new HashMap<>();
+    private ClientLevel level;
 
     public LestoraPlayer(Player player) {
         this.mcPlayer = player;
@@ -76,27 +79,115 @@ public class LestoraPlayer {
     public static LestoraPlayer get(Player player) {
         return players.computeIfAbsent(player.getUUID(), key -> {
             var lestoraPlayer = new LestoraPlayer(player);
-            lestoraPlayer.calc();
+            lestoraPlayer.calc(player);
             return lestoraPlayer;
         });
     }
 
-    public void calc() {
-        if (this.supportingBlock != null) {
-            var thisBlock = this.supportingBlock.getSupportingBlock().getBlock();
-            if (thisBlock == Blocks.WATER) {
-                lastBlockSolid = false;
-            }
-            else if (thisBlock != Blocks.AIR) {
-                lastBlockSolid = true;
+    public void calc(Player player) {
+        this.level = Minecraft.getInstance().level;
+        if (this.level == null || this.mcPlayer == null) return;
+        this.mcPlayer = player;
+
+        // Cache the nearby blocks at the start.
+        cacheNearbyBlocks();
+        // Temporal Coupling FTW.  Keep these in order:
+        CalculateSupportBlock();
+        CalculateWetness();
+        CalculateBodyTemp();
+    }
+
+    // Cache a cube of block states around the player (from -5 to +5 in x, y, and z).
+    private void cacheNearbyBlocks() {
+        BlockPos playerPos = mcPlayer.blockPosition();
+        cachedBlockStates.clear();
+        for (int x = -5; x <= 5; x++) {
+            for (int y = -5; y <= 5; y++) {
+                for (int z = -5; z <= 5; z++) {
+                    BlockPos pos = playerPos.offset(x, y, z);
+                    cachedBlockStates.put(pos, this.level.getBlockState(pos));
+                }
             }
         }
-        this.supportingBlock = StandingBlockUtil.getSupportingBlock(this.mcPlayer, lastBlockSolid);
+    }
 
+    private void CalculateBodyTemp() {
+        BlockPos playerPos = mcPlayer.blockPosition();
+        Holder<Biome> biomeHolder = this.level.getBiome(playerPos);
+        this.biome = biomeHolder.value();
+        float baseTemp = ConfigBiomeTempEventHandler.getBiomeTemp(this.biome);
+
+        // If player's altitude is below 60 and the biome is not one of the underground biomes,
+        // then override baseTemp to 0.5.
+        if (mcPlayer.getBlockY() < 60) {
+            ResourceLocation biomeRL = getBiomeResourceLocation(this.level, this.biome);
+            if (biomeRL == null ||
+                    (!biomeRL.equals(ResourceLocation.parse("minecraft:dripstone_caves"))
+                            && !biomeRL.equals(ResourceLocation.parse("minecraft:lush_caves"))
+                            && !biomeRL.equals(ResourceLocation.parse("minecraft:deep_dark")))) {
+                baseTemp = 0.5f;
+            }
+        }
+
+        // Calculate lava proximity offset.
+        int lavaOffset = 0;
+        // First, check if the player is in lava.
+        BlockState currentState = cachedBlockStates.get(playerPos);
+        if (currentState != null && currentState.getBlock() == Blocks.LAVA) {
+            bodyTemp = 300;
+            return;
+        } else {
+            // Check for nearby lava within 5 blocks using the cached data.
+            for (int d = 1; d <= 5; d++) {
+                boolean foundLava = false;
+                // Check in a cube of radius 'd' around the player.
+                outer:
+                for (int x = -d; x <= d; x++) {
+                    for (int y = -d; y <= d; y++) {
+                        for (int z = -d; z <= d; z++) {
+                            BlockPos checkPos = playerPos.offset(x, y, z);
+                            BlockState state = cachedBlockStates.get(checkPos);
+                            if (state != null && state.getBlock() == Blocks.LAVA) {
+                                foundLava = true;
+                                break outer;
+                            }
+                        }
+                    }
+                }
+                if (foundLava) {
+                    switch (d) {
+                        case 5:
+                            lavaOffset = 10;
+                            break;
+                        case 4:
+                            lavaOffset = 20;
+                            break;
+                        case 3:
+                            lavaOffset = 30;
+                            break;
+                        case 2:
+                            lavaOffset = 50;
+                            break;
+                        case 1:
+                            lavaOffset = 75;
+                            break;
+                    }
+                    break; // Use the first (closest) found lava distance.
+                }
+            }
+        }
+
+        var thisWetness = this.wetness == Wetness.FULLY_SUBMERGED ? Wetness.NEARLY_SUBMERGED : this.wetness;
+        var wetnessOffset = Math.min(17 * thisWetness.ordinal(), 50);
+        Integer altitudeOffset = (mcPlayer.getBlockY() - 60) / 5;
+        // Incorporate lavaOffset into the final body temperature calculation.
+        bodyTemp = (baseTemp * 25 - wetnessOffset - altitudeOffset) + 60 + lavaOffset;
+    }
+
+    private void CalculateWetness() {
         long now = System.currentTimeMillis();
         if (lastUpdateTime == 0) {
             lastUpdateTime = now;
-            return;
         }
         float delta = (now - lastUpdateTime) / 1000f; // seconds elapsed
         lastUpdateTime = now;
@@ -158,32 +249,18 @@ public class LestoraPlayer {
                 }
             }
         }
+    }
 
-        Level world = Minecraft.getInstance().level;
-        if (world != null && Minecraft.getInstance().player != null) {
-            BlockPos pos = Minecraft.getInstance().player.blockPosition();
-            Holder<Biome> biomeHolder = world.getBiome(pos);
-            this.biome = biomeHolder.value();
-            float baseTemp = ConfigBiomeTempEventHandler.getBiomeTemp(this.biome);
-
-            // If player's altitude is below 60 and the biome is not one of the underground biomes,
-            // then override baseTemp to 0.5.
-            if (mcPlayer.getBlockY() < 60) {
-                ResourceLocation biomeRL = getBiomeResourceLocation(world, this.biome);
-                // Use ResourceLocation.parse to get our underground biome keys.
-                if (biomeRL == null ||
-                        (!biomeRL.equals(ResourceLocation.parse("minecraft:dripstone_caves"))
-                                && !biomeRL.equals(ResourceLocation.parse("minecraft:lush_caves"))
-                                && !biomeRL.equals(ResourceLocation.parse("minecraft:deep_dark")))) {
-                    baseTemp = 0.5f;
-                }
+    private void CalculateSupportBlock() {
+        if (this.supportingBlock != null) {
+            var thisBlock = this.supportingBlock.getSupportingBlock().getBlock();
+            if (thisBlock == Blocks.WATER) {
+                lastBlockSolid = false;
+            } else if (thisBlock != Blocks.AIR) {
+                lastBlockSolid = true;
             }
-
-            var thisWetness = this.wetness == Wetness.FULLY_SUBMERGED ? Wetness.NEARLY_SUBMERGED : this.wetness;
-            var wetnessOffset = Math.min(17 * thisWetness.ordinal(), 50);
-            Integer altitudeOffset = (mcPlayer.getBlockY() - 60) / 5;
-            bodyTemp = (baseTemp * 25 - wetnessOffset - altitudeOffset) + 60;
         }
+        this.supportingBlock = StandingBlockUtil.getSupportingBlock(this.mcPlayer, lastBlockSolid);
     }
 
     // Helper method for getting the ResourceLocation for a given biome.
