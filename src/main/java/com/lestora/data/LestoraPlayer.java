@@ -18,6 +18,8 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
@@ -27,17 +29,13 @@ public class LestoraPlayer {
     private Player mcPlayer;
     private final UUID uuid;
     private EntityBlockInfo supportingBlock;
-    private Wetness wetness;
+    private Wetness wetness = Wetness.DRY;
     private Biome nonRiverBiome;
     private Biome biome;
     private boolean lastBlockSolid;
-    private float bodyTemp = 0f;
+    private float bodyTemp = 98f;
 
     // Timers in seconds
-    private float submergedTimer = 0f;
-    private float soakedTimer = 0f;
-    private float dampTimer = 0f;
-    // Timestamp in milliseconds
     private long lastUpdateTime = 0;
 
     // Cache of nearby block states (cube from -5 to 5 in x,y,z)
@@ -129,127 +127,168 @@ public class LestoraPlayer {
             }
         }
 
-        // Calculate lava proximity offset.
-        int lavaOffset = 0;
-        // First, check if the player is in lava.
+        // Immediate check: if the player is directly in lava or fire.
         BlockState currentState = cachedBlockStates.get(playerPos);
-        if (currentState != null && currentState.getBlock() == Blocks.LAVA) {
-            bodyTemp = 300;
-            return;
-        } else {
-            // Check for nearby lava within 5 blocks using the cached data.
-            for (int d = 1; d <= 5; d++) {
-                boolean foundLava = false;
-                // Check in a cube of radius 'd' around the player.
-                outer:
-                for (int x = -d; x <= d; x++) {
-                    for (int y = -d; y <= d; y++) {
-                        for (int z = -d; z <= d; z++) {
-                            BlockPos checkPos = playerPos.offset(x, y, z);
-                            BlockState state = cachedBlockStates.get(checkPos);
-                            if (state != null && state.getBlock() == Blocks.LAVA) {
-                                foundLava = true;
-                                break outer;
-                            }
-                        }
-                    }
-                }
-                if (foundLava) {
-                    switch (d) {
-                        case 5:
-                            lavaOffset = 10;
-                            break;
-                        case 4:
-                            lavaOffset = 20;
-                            break;
-                        case 3:
-                            lavaOffset = 30;
-                            break;
-                        case 2:
-                            lavaOffset = 50;
-                            break;
-                        case 1:
-                            lavaOffset = 75;
-                            break;
-                    }
-                    break; // Use the first (closest) found lava distance.
-                }
+        if (currentState != null) {
+            if (currentState.getBlock() == Blocks.LAVA) {
+                bodyTemp = 300;
+                return;
+            }
+            if (currentState.getBlock() == Blocks.FIRE) {
+                bodyTemp = 150;
+                return;
+            }
+        }
+
+        // Check if the player has any Lava Buckets in inventory.
+        boolean hasLavaBucket = false;
+        for (ItemStack stack : mcPlayer.getInventory().items) {
+            if (!stack.isEmpty() && stack.getItem() == Items.LAVA_BUCKET) {
+                hasLavaBucket = true;
+                break;
             }
         }
 
         var thisWetness = this.wetness == Wetness.FULLY_SUBMERGED ? Wetness.NEARLY_SUBMERGED : this.wetness;
         var wetnessOffset = Math.min(17 * thisWetness.ordinal(), 50);
+        float offset = 0f;
+
+        if (!mcPlayer.isInWater()) {
+            if (hasLavaBucket) {
+                // If they have a lava bucket, override offset to 75.
+                offset = 75f;
+            } else {
+                // Otherwise, calculate the combined fire/lava offset.
+                offset = getFireLavaOffset(playerPos);
+            }
+        }
+
         Integer altitudeOffset = (mcPlayer.getBlockY() - 60) / 5;
-        // Incorporate lavaOffset into the final body temperature calculation.
-        bodyTemp = (baseTemp * 25 - wetnessOffset - altitudeOffset) + 60 + lavaOffset;
+        // Calculate bodyTemp.
+        bodyTemp = (baseTemp * 25 - wetnessOffset - altitudeOffset) + 60 + offset;
+        // Cap bodyTemp at 300.
+        bodyTemp = Math.min(bodyTemp, 300);
     }
+
+
+    private float getFireLavaOffset(BlockPos playerPos) {
+        float offset = 0f;
+        // Loop over distances 1 to 5
+        for (int d = 1; d <= 5; d++) {
+            // Check in a cube of radius 'd' around the player.
+            for (int x = -d; x <= d; x++) {
+                for (int y = -d; y <= d; y++) {
+                    for (int z = -d; z <= d; z++) {
+                        BlockPos checkPos = playerPos.offset(x, y, z);
+                        BlockState state = cachedBlockStates.get(checkPos);
+                        if (state != null) {
+                            if (state.getBlock() == Blocks.LAVA) {
+                                float candidate = getLavaOffset(d);
+                                if (candidate > offset) {
+                                    offset = candidate;
+                                }
+                            } else if (state.getBlock() == Blocks.FIRE) {
+                                float candidate = getFireOffset(d);
+                                if (candidate > offset) {
+                                    offset = candidate;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return offset;
+    }
+
+    private float getLavaOffset(int d) {
+        switch (d) {
+            case 1: return 75f;
+            case 2: return 50f;
+            case 3: return 30f;
+            case 4: return 20f;
+            case 5: return 10f;
+            default: return 0f;
+        }
+    }
+
+    private float getFireOffset(int d) {
+        switch (d) {
+            case 1: return 37.5f;
+            case 2: return 25f;
+            case 3: return 15f;
+            case 4: return 10f;
+            case 5: return 5f;
+            default: return 0f;
+        }
+    }
+
+
+    // A single timer for state transitions.
+    private float transitionTimer = 0f;
 
     private void CalculateWetness() {
         long now = System.currentTimeMillis();
         if (lastUpdateTime == 0) {
             lastUpdateTime = now;
         }
-        float delta = (now - lastUpdateTime) / 1000f; // seconds elapsed
+        // Compute elapsed time in seconds.
+        float delta = (now - lastUpdateTime) / 1000f;
         lastUpdateTime = now;
 
-        // Decrement any active timers
-        if (submergedTimer > 0) submergedTimer = Math.max(0, submergedTimer - delta);
-        if (soakedTimer > 0) soakedTimer = Math.max(0, soakedTimer - delta);
-        if (dampTimer > 0) dampTimer = Math.max(0, dampTimer - delta);
+        // Calculate drynessTime based on bodyTemp.
+        // For bodyTemp <= 100: interpolate from 30 sec at -100 to 5 sec at 100.
+        // For bodyTemp > 100: cap at 1 sec.
+        float clampedTemp = Math.max(-100f, Math.min(bodyTemp, 100f));
+        float drynessTime = (bodyTemp > 100) ? 1f : 30f - 0.125f * (clampedTemp + 100f);
+        System.out.println("Dryness Time: " + drynessTime);
 
-        // Get current "raw" wetness from your utility method.
-        var newWetness = WetnessUtil.getPlayerWetness(this.mcPlayer, this.supportingBlock);
+        // Accumulate time since last state transition.
+        transitionTimer += delta;
 
-        // If the player is (re)submerged, reset the SubmergedTimer
-        if (newWetness == Wetness.FULLY_SUBMERGED || newWetness == Wetness.NEARLY_SUBMERGED) {
-            submergedTimer = 5f;
-            soakedTimer = 0f;
-            dampTimer = 0f;
-            this.wetness = newWetness;
-        } else {
-            // If the player was previously fully/near-submerged but no longer,
-            // wait until the submerged timer runs out then downgrade to SOAKED.
-            if (this.wetness == Wetness.FULLY_SUBMERGED || this.wetness == Wetness.NEARLY_SUBMERGED) {
-                this.wetness = Wetness.NEARLY_SUBMERGED;
-                if (submergedTimer <= 0) {
+        // Get the current "raw" wetness from your utility.
+        var rawWetness = WetnessUtil.getPlayerWetness(this.mcPlayer, this.supportingBlock);
+        System.out.println("Raw Wetness: " + rawWetness + ", Current Wetness: " + this.wetness);
+
+        // Immediate upgrade: if the raw wetness is wetter than our current state.
+        if (rawWetness.ordinal() > this.wetness.ordinal()) {
+            this.wetness = rawWetness;
+            transitionTimer = 0;
+            return;
+        }
+
+        // If we were FULLY_SUBMERGED but now have less wet raw value,
+        // immediately drop to NEARLY_SUBMERGED.
+        if (this.wetness == Wetness.FULLY_SUBMERGED &&
+                rawWetness.ordinal() < Wetness.FULLY_SUBMERGED.ordinal()) {
+            this.wetness = Wetness.NEARLY_SUBMERGED;
+            transitionTimer = 0;
+            return;
+        }
+
+        // If accumulated time exceeds drynessTime, downgrade one stage.
+        if (transitionTimer >= drynessTime) {
+            switch (this.wetness) {
+                case NEARLY_SUBMERGED:
                     this.wetness = Wetness.SOAKED;
-                    soakedTimer = 5f;
-                    submergedTimer = 0f;
-                }
-            }
-            // If the "raw" wetness indicates SOAKED, reset the soaked timer.
-            else if (newWetness == Wetness.SOAKED) {
-                soakedTimer = 5f;
-                submergedTimer = 0f;
-                dampTimer = 0f;
-                this.wetness = Wetness.SOAKED;
-            } else {
-                // If the player was previously SOAKED, wait until the soaked timer expires before downgrading to DAMP.
-                if (this.wetness == Wetness.SOAKED) {
-                    if (soakedTimer <= 0) {
-                        this.wetness = Wetness.DAMP;
-                        dampTimer = 5f;
-                        soakedTimer = 0f;
-                    }
-                }
-                // If the raw state is DAMP, reset the damp timer.
-                else if (newWetness == Wetness.DAMP) {
-                    dampTimer = 5f;
-                    submergedTimer = 0f;
-                    soakedTimer = 0f;
+                    break;
+                case SOAKED:
                     this.wetness = Wetness.DAMP;
-                } else {
-                    // Otherwise, when damp timer expires, set state to DRY.
-                    if (dampTimer <= 0) {
-                        this.wetness = Wetness.DRY;
-                        dampTimer = 0f;
-                        submergedTimer = 0f;
-                        soakedTimer = 0f;
-                    }
-                }
+                    break;
+                case DAMP:
+                    this.wetness = Wetness.DRY;
+                    break;
+                default:
+                    // Already DRY, do nothing.
+                    break;
             }
+            transitionTimer = 0;
         }
     }
+
+
+
+
 
     private void CalculateSupportBlock() {
         if (this.supportingBlock != null) {
