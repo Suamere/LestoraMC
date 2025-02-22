@@ -1,6 +1,6 @@
 package com.lestora.event;
 
-import com.lestora.LestoraConfig;
+import com.lestora.ConfigLighting;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -15,19 +15,20 @@ public class ConfigEventHandler {
 
     @SubscribeEvent
     public static void onLoad(ModConfigEvent.Loading event) {
-        if (event.getConfig().getSpec() == LestoraConfig.COMMON_CONFIG) {
-            lightLevelsMap = LestoraConfig.getLightLevelsMap();
+        if (event.getConfig().getSpec() == ConfigLighting.LIGHTING_CONFIG) {
+            lightLevelsMap = ConfigLighting.getLightLevelsMap();
         }
     }
 
     @SubscribeEvent
     public static void onReload(ModConfigEvent.Reloading event) {
-        if (event.getConfig().getSpec() == LestoraConfig.COMMON_CONFIG) {
-            lightLevelsMap = LestoraConfig.getLightLevelsMap();
+        if (event.getConfig().getSpec() == ConfigLighting.LIGHTING_CONFIG) {
+            lightLevelsMap = ConfigLighting.getLightLevelsMap();
         }
     }
 
     public static Integer getLightLevel(ResourceLocation rl) {
+
         return lightLevelsMap.get(rl);
     }
 }

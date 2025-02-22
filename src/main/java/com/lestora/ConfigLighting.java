@@ -8,8 +8,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class LestoraConfig {
-    public static final ForgeConfigSpec COMMON_CONFIG;
+public class ConfigLighting {
+    public static final ForgeConfigSpec LIGHTING_CONFIG;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> LIGHT_LEVELS;
 
     static {
@@ -20,7 +20,7 @@ public class LestoraConfig {
                         Arrays.asList("minecraft:torch=14", "minecraft:lava_bucket=10", "minecraft:glowstone=8"),
                         o -> o instanceof String && ((String)o).contains("="));
         builder.pop();
-        COMMON_CONFIG = builder.build();
+        LIGHTING_CONFIG = builder.build();
     }
 
     public static Map<ResourceLocation, Integer> getLightLevelsMap() {
