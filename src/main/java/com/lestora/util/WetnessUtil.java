@@ -34,7 +34,7 @@ public class WetnessUtil {
         BlockState feetState = standingSpace.getFeetBlock();
 
         // Check if the supporting block is actual water.
-        if (stateStanding.getBlock() == Blocks.WATER) {
+        if (stateStanding.getBlock() == Blocks.WATER && stateStanding.getFluidState().isSource()) {
             if (headState.getBlock() == Blocks.WATER) {
                 if (headState.getFluidState().getAmount() > 3)
                     return Wetness.FULLY_SUBMERGED;

@@ -26,7 +26,7 @@ public class EntityBlockInfo {
         this._supportingPos = supportingPos;
     }
 
-    public static EntityBlockInfo fromSupport(BlockState supportState, BlockPos supportPos) {
+    public static EntityBlockInfo fromSupport(BlockState supportState, BlockPos supportPos, boolean lastBlockSolid) {
         Level world = Minecraft.getInstance().level;
         var sptBlk = supportPos;
         var sptState = supportState;
@@ -40,7 +40,7 @@ public class EntityBlockInfo {
         else if (sptState.getBlock() == Blocks.AIR) {
             var belowBlk = sptBlk.below();
             var belowState = world.getBlockState(belowBlk);
-            if (belowState.getBlock() == Blocks.WATER) {
+            if (belowState.getBlock() == Blocks.WATER && !lastBlockSolid) {
                 var headBlk = sptBlk;
                 var headState = sptState;
                 sptBlk = belowBlk;

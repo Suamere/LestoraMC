@@ -10,6 +10,7 @@ import com.lestora.util.Wetness;
 import com.lestora.util.WetnessUtil;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
 public class LestoraPlayer {
@@ -18,6 +19,7 @@ public class LestoraPlayer {
     private EntityBlockInfo supportingBlock;
     private Wetness wetness;
     private Biome biome;
+    private boolean lastBlockSolid;
 
     // Timers in seconds
     private float submergedTimer = 0f;
@@ -63,7 +65,16 @@ public class LestoraPlayer {
     }
 
     public void calc() {
-        this.supportingBlock = StandingBlockUtil.getSupportingBlock(this.mcPlayer);
+        if (this.supportingBlock != null) {
+            var thisBlock = this.supportingBlock.getSupportingBlock().getBlock();
+            if (thisBlock == Blocks.WATER) {
+                lastBlockSolid = false;
+            }
+            else if (thisBlock != Blocks.AIR) {
+                lastBlockSolid = true;
+            }
+        }
+        this.supportingBlock = StandingBlockUtil.getSupportingBlock(this.mcPlayer, lastBlockSolid);
 
         long now = System.currentTimeMillis();
         if (lastUpdateTime == 0) {

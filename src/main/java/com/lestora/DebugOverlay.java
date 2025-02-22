@@ -2,10 +2,8 @@ package com.lestora;
 
 import com.lestora.data.LestoraPlayer;
 import com.lestora.util.StandingBlockUtil;
-import com.lestora.util.WetnessUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.CustomizeGuiOverlayEvent;
 import net.minecraftforge.fml.common.Mod;

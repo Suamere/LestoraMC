@@ -7,14 +7,13 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
 
 public class StandingBlockUtil {
 
-    public static EntityBlockInfo getSupportingBlock(Player player) {
+    public static EntityBlockInfo getSupportingBlock(Player player, boolean lastBlockSolid) {
         Level world = Minecraft.getInstance().level;
         if (world == null || player == null) return null;
 
@@ -22,13 +21,13 @@ public class StandingBlockUtil {
         var blk = world.getBlockState(supportingPos).getBlock();
 
         if (blk == Blocks.AIR || blk == Blocks.WATER) {
-            supportingPos = getBlockPos(player, world, supportingPos, -1, blk == Blocks.WATER);
+            supportingPos = getBlockPos(player, world, supportingPos, -1, blk == Blocks.WATER, lastBlockSolid);
         }
 
-        return EntityBlockInfo.fromSupport(world.getBlockState(supportingPos), supportingPos);
+        return EntityBlockInfo.fromSupport(world.getBlockState(supportingPos), supportingPos, lastBlockSolid);
     }
 
-    private static @NotNull BlockPos getBlockPos(Player player, Level world, BlockPos supportingPos, int offset, boolean fromWater) {
+    private static @NotNull BlockPos getBlockPos(Player player, Level world, BlockPos supportingPos, int offset, boolean fromWater, boolean lastBlockSolid) {
         // Move the player's bounding box downward by one block.
         AABB bb = player.getBoundingBox().move(0, offset, 0);
         // We'll search for support in the blocks intersecting the horizontal span of bb
@@ -67,14 +66,14 @@ public class StandingBlockUtil {
 
         if (bestCandidate != null && bestOverlap > 0.0) {
             supportingPos = bestCandidate;
-        } else if (!fromWater) {
+        } else if (!fromWater && !lastBlockSolid) {
             // If no block collision is found, check if water exists below the original support.
             BlockPos waterPos = supportingPos.below();
             BlockState waterState = world.getBlockState(waterPos);
             if (waterState.getBlock() == Blocks.WATER) {
                 supportingPos = waterPos;
                 if (offset == -1){
-                    var beneath = getBlockPos(player, world, supportingPos, -2, true);
+                    var beneath = getBlockPos(player, world, supportingPos, -2, true, lastBlockSolid);
                     if (world.getBlockState(beneath).getBlock() != Blocks.WATER) return beneath;
                 }
             }
@@ -83,15 +82,6 @@ public class StandingBlockUtil {
     }
 
     public static String getSupportingBlockType(EntityBlockInfo supportPos) {
-        if (supportPos == null) {
-            return "None";
-        }
-        BlockState state = supportPos.getSupportingBlock();
-
-//        if (state.hasProperty(BlockStateProperties.WATERLOGGED) && state.getValue(BlockStateProperties.WATERLOGGED)) {
-//            return state.getBlock().getName().getString();
-//        }
-
-        return state.getBlock().getName().getString();
+        return supportPos == null ? "None" : supportPos.getSupportingBlock().getBlock().getName().getString();
     }
 }
