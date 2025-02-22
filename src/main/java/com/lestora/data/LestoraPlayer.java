@@ -91,6 +91,7 @@ public class LestoraPlayer {
             // If the player was previously fully/near-submerged but no longer,
             // wait until the submerged timer runs out then downgrade to SOAKED.
             if (this.wetness == Wetness.FULLY_SUBMERGED || this.wetness == Wetness.NEARLY_SUBMERGED) {
+                this.wetness = Wetness.NEARLY_SUBMERGED;
                 if (submergedTimer <= 0) {
                     this.wetness = Wetness.SOAKED;
                     soakedTimer = 5f;

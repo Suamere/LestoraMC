@@ -58,7 +58,7 @@ public class WetnessUtil {
                     return Wetness.NEARLY_SUBMERGED;
             }
 
-            if (feetState.getBlock() == Blocks.WATER) {
+            if (feetState.getBlock() == Blocks.WATER && player.isInWater()) {
                 if (feetState.getFluidState().getAmount() > 3) {
                     return Wetness.SOAKED;
                 } else {
