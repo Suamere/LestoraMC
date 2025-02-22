@@ -1,5 +1,6 @@
 package com.lestora;
 
+import com.lestora.data.LestoraPlayer;
 import com.lestora.util.StandingBlockUtil;
 import com.lestora.util.WetnessUtil;
 import net.minecraft.client.Minecraft;
@@ -27,22 +28,19 @@ public class DebugOverlay {
         if (mc.player == null) return;
 
         GuiGraphics guiGraphics = event.getGuiGraphics();
-        var supportPos = StandingBlockUtil.getSupportingBlock(mc.player);
-        String supportType = StandingBlockUtil.getSupportingBlockType(supportPos);
+        var lestoraPlayer = LestoraPlayer.get(mc.player);
+        var supportPos = lestoraPlayer.getSupportingBlock();
 
-        String text = "Wetness: " + WetnessUtil.getPlayerWetness(mc.player);
-        Component comp = Component.literal(text);
-        String text2 = "Supporting Block: " + supportType + " " + supportPos.getSupportingPos();
-        Component comp2 = Component.literal(text2);
+        var text1 = "Wetness: " + lestoraPlayer.getWetness();
+        var text2 = "Supporting Block: " + StandingBlockUtil.getSupportingBlockType(supportPos) + " " + supportPos.getSupportingPos();
 
-        // Calculate the center for each line.
         int screenWidth = mc.getWindow().getGuiScaledWidth();
-        int textWidth1 = mc.font.width(comp.getString());
-        int textWidth2 = mc.font.width(comp2.getString());
+        int textWidth1 = mc.font.width(text1);
+        int textWidth2 = mc.font.width(text2);
         int x1 = (screenWidth - textWidth1) / 2;
         int x2 = (screenWidth - textWidth2) / 2;
 
-        guiGraphics.drawString(mc.font, comp.getString(), x1, 10, 0xFFFFFF, false);
-        guiGraphics.drawString(mc.font, comp2.getString(), x2, 25, 0xFFFFFF, false);
+        guiGraphics.drawString(mc.font, text1, x1, 10, 0xFFFFFF, false);
+        guiGraphics.drawString(mc.font, text2, x2, 25, 0xFFFFFF, false);
     }
 }

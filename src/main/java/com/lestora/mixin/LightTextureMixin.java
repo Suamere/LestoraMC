@@ -1,6 +1,6 @@
 package com.lestora.mixin;
 
-import com.lestora.ConfigEventHandler;
+import com.lestora.event.ConfigEventHandler;
 import com.lestora.util.TestLightConfig;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.lighting.BlockLightEngine;

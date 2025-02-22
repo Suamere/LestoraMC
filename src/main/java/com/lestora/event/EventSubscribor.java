@@ -1,5 +1,7 @@
-package com.lestora;
+package com.lestora.event;
 
+import com.lestora.HighlightConfig;
+import com.lestora.data.LestoraPlayer;
 import com.lestora.util.TestLightConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -51,9 +53,10 @@ public class EventSubscribor {
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
+        var level = Minecraft.getInstance().level;
+        if (level == null) return;
+
         if (TestLightConfig.getEnabled()) {
-            var level = Minecraft.getInstance().level;
-            if (level == null) return;
             for (Player player : level.players()) {
                 var mainStack = player.getMainHandItem();
                 var offStack = player.getOffhandItem();
@@ -84,9 +87,12 @@ public class EventSubscribor {
             }
             TestLightConfig.tryUpdateEntityPositions();
         }
+
+        var clientPlayer = Minecraft.getInstance().player;
+        if (clientPlayer != null) {
+            LestoraPlayer.get(clientPlayer).calc();
+        }
     }
-
-
 
     @SubscribeEvent
     public static void onEntityJoinLevel(EntityJoinLevelEvent event) {

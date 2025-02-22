@@ -15,22 +15,15 @@ public class EntityBlockInfo {
 
     // Coordinates for the respective blocks.
     private final Coordinates _supportingPos;
-    private final Coordinates _belowPos;
-    private final Coordinates _feetPos;
-    private final Coordinates _headPos;
 
     private EntityBlockInfo(BlockState supportingBlock, BlockState belowSupport,
                            BlockState feetBlock, BlockState headBlock,
-                           Coordinates supportingPos, Coordinates belowPos,
-                           Coordinates feetPos, Coordinates headPos) {
+                           Coordinates supportingPos) {
         this._supportingBlock = supportingBlock;
         this._belowSupport = belowSupport;
         this._feetBlock = feetBlock;
         this._headBlock = headBlock;
         this._supportingPos = supportingPos;
-        this._belowPos = belowPos;
-        this._feetPos = feetPos;
-        this._headPos = headPos;
     }
 
     public static EntityBlockInfo fromSupport(BlockState supportState, BlockPos supportPos) {
@@ -42,7 +35,7 @@ public class EntityBlockInfo {
             var headState = world.getBlockState(headBlk);
             var belowBlk = sptBlk.below();
             var belowState = world.getBlockState(belowBlk);
-            return new EntityBlockInfo(sptState, belowState, sptState, headState, Coordinates.fromPos(sptBlk), Coordinates.fromPos(belowBlk), Coordinates.fromPos(sptBlk), Coordinates.fromPos(headBlk));
+            return new EntityBlockInfo(sptState, belowState, sptState, headState, Coordinates.fromPos(sptBlk));
         }
         else if (sptState.getBlock() == Blocks.AIR) {
             var belowBlk = sptBlk.below();
@@ -54,12 +47,12 @@ public class EntityBlockInfo {
                 sptState = belowState;
                 belowBlk = sptBlk.below();
                 belowState = world.getBlockState(belowBlk);
-                return new EntityBlockInfo(sptState, belowState, sptState, headState, Coordinates.fromPos(sptBlk), Coordinates.fromPos(belowBlk), Coordinates.fromPos(sptBlk), Coordinates.fromPos(headBlk));
+                return new EntityBlockInfo(sptState, belowState, sptState, headState, Coordinates.fromPos(sptBlk));
             }
             else {
                 var headBlk = sptBlk.above();
                 var headState = world.getBlockState(headBlk);
-                return new EntityBlockInfo(sptState, belowState, sptState, headState, Coordinates.fromPos(sptBlk), Coordinates.fromPos(belowBlk), Coordinates.fromPos(sptBlk), Coordinates.fromPos(headBlk));
+                return new EntityBlockInfo(sptState, belowState, sptState, headState, Coordinates.fromPos(sptBlk));
             }
         }
 
@@ -69,7 +62,7 @@ public class EntityBlockInfo {
         var headState = world.getBlockState(headBlk);
         var belowBlk = sptBlk.below();
         var belowState = world.getBlockState(belowBlk);
-        return new EntityBlockInfo(sptState, belowState, feetState, headState, Coordinates.fromPos(sptBlk), Coordinates.fromPos(belowBlk), Coordinates.fromPos(feetBlk), Coordinates.fromPos(headBlk));
+        return new EntityBlockInfo(sptState, belowState, feetState, headState, Coordinates.fromPos(sptBlk));
     }
 
     public BlockState getSupportingBlock() {
@@ -90,31 +83,5 @@ public class EntityBlockInfo {
 
     public Coordinates getSupportingPos() {
         return _supportingPos;
-    }
-
-    public Coordinates getBelowPos() {
-        return _belowPos;
-    }
-
-    public Coordinates getFeetPos() {
-        return _feetPos;
-    }
-
-    public Coordinates getHeadPos() {
-        return _headPos;
-    }
-
-    @Override
-    public String toString() {
-        return "EntityBlockInfo{" +
-                "supportingBlock=" + _supportingBlock +
-                ", belowSupport=" + _belowSupport +
-                ", feetBlock=" + _feetBlock +
-                ", headBlock=" + _headBlock +
-                ", supportingPos=" + _supportingPos +
-                ", belowPos=" + _belowPos +
-                ", feetPos=" + _feetPos +
-                ", headPos=" + _headPos +
-                '}';
     }
 }

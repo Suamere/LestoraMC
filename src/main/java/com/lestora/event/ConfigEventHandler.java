@@ -1,5 +1,6 @@
-package com.lestora;
+package com.lestora.event;
 
+import com.lestora.LestoraConfig;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;

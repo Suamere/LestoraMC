@@ -88,9 +88,9 @@ public class StandingBlockUtil {
         }
         BlockState state = supportPos.getSupportingBlock();
 
-        if (state.hasProperty(BlockStateProperties.WATERLOGGED) && state.getValue(BlockStateProperties.WATERLOGGED)) {
-            return state.getBlock().getName().getString();
-        }
+//        if (state.hasProperty(BlockStateProperties.WATERLOGGED) && state.getValue(BlockStateProperties.WATERLOGGED)) {
+//            return state.getBlock().getName().getString();
+//        }
 
         return state.getBlock().getName().getString();
     }

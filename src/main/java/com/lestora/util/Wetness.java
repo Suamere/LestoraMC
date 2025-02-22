@@ -1,9 +1,9 @@
 package com.lestora.util;
 
 public enum Wetness {
-    FULLY_SUBMERGED,
-    NEARLY_SUBMERGED,
-    SOAKED,
+    DRY,
     DAMP,
-    DRY
+    SOAKED,
+    NEARLY_SUBMERGED,
+    FULLY_SUBMERGED
 }
