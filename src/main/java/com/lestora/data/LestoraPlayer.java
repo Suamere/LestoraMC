@@ -91,15 +91,15 @@ public class LestoraPlayer {
         cacheNearbyBlocks();
         CalculateSupportBlock();
         CalculateWetness();
-        this.bodyTemp = rubberBand(this.bodyTemp, CalculateBodyTemp());
+        RubberBand(this.bodyTemp, CalculateBodyTemp());
     }
 
-    public static float rubberBand(float current, float target) {
+    private void RubberBand(float current, float target) {
         float diff = target - current;
         float factor = 0.05f + 0.05f * (float)Math.tanh(Math.abs(diff) / 50.0f);
         float step = diff * factor;
-        if (Math.abs(step) > Math.abs(diff)) return target;
-        return current + step;
+        if (Math.abs(step) > Math.abs(diff)) this.bodyTemp = target;
+        else this.bodyTemp = current + step;
     }
 
     // Cache a cube of block states around the player (from -5 to +5 in x, y, and z).
