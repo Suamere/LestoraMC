@@ -36,6 +36,7 @@ public class LestoraPlayer {
 
     // Timers in seconds
     private long lastUpdateTime = 0;
+    private long lastUpdateTime2 = 0;
     private float transitionTimer = 0f;
 
     // Cache of nearby block states (cube from -5 to 5 in x,y,z)
@@ -87,12 +88,18 @@ public class LestoraPlayer {
         if (this.level == null || this.mcPlayer == null) return;
         this.mcPlayer = player;
 
-        // Cache the nearby blocks at the start.
         cacheNearbyBlocks();
-        // Temporal Coupling FTW.  Keep these in order:
         CalculateSupportBlock();
         CalculateWetness();
-        bodyTemp = CalculateBodyTemp();
+        this.bodyTemp = rubberBand(this.bodyTemp, CalculateBodyTemp());
+    }
+
+    public static float rubberBand(float current, float target) {
+        float diff = target - current;
+        float factor = 0.05f + 0.05f * (float)Math.tanh(Math.abs(diff) / 50.0f);
+        float step = diff * factor;
+        if (Math.abs(step) > Math.abs(diff)) return target;
+        return current + step;
     }
 
     // Cache a cube of block states around the player (from -5 to +5 in x, y, and z).
