@@ -30,13 +30,13 @@ public class LestoraPlayer {
     private final UUID uuid;
     private EntityBlockInfo supportingBlock;
     private Wetness wetness = Wetness.DRY;
-    private Biome nonRiverBiome;
     private Biome biome;
     private boolean lastBlockSolid;
     private float bodyTemp = 98f;
 
     // Timers in seconds
     private long lastUpdateTime = 0;
+    private float transitionTimer = 0f;
 
     // Cache of nearby block states (cube from -5 to 5 in x,y,z)
     private final Map<BlockPos, BlockState> cachedBlockStates = new HashMap<>();
@@ -92,7 +92,7 @@ public class LestoraPlayer {
         // Temporal Coupling FTW.  Keep these in order:
         CalculateSupportBlock();
         CalculateWetness();
-        CalculateBodyTemp();
+        bodyTemp = CalculateBodyTemp();
     }
 
     // Cache a cube of block states around the player (from -5 to +5 in x, y, and z).
@@ -109,7 +109,7 @@ public class LestoraPlayer {
         }
     }
 
-    private void CalculateBodyTemp() {
+    private float CalculateBodyTemp() {
         BlockPos playerPos = mcPlayer.blockPosition();
         Holder<Biome> biomeHolder = this.level.getBiome(playerPos);
         this.biome = biomeHolder.value();
@@ -131,12 +131,10 @@ public class LestoraPlayer {
         BlockState currentState = cachedBlockStates.get(playerPos);
         if (currentState != null) {
             if (currentState.getBlock() == Blocks.LAVA) {
-                bodyTemp = 300;
-                return;
+                return 300;
             }
             if (currentState.getBlock() == Blocks.FIRE) {
-                bodyTemp = 150;
-                return;
+                return 150;
             }
         }
 
@@ -148,26 +146,37 @@ public class LestoraPlayer {
                 break;
             }
         }
+        boolean hasSnowBucket = false;
+        for (ItemStack stack : mcPlayer.getInventory().items) {
+            if (!stack.isEmpty() && stack.getItem() == Items.POWDER_SNOW_BUCKET) {
+                hasSnowBucket = true;
+                break;
+            }
+        }
 
         var thisWetness = this.wetness == Wetness.FULLY_SUBMERGED ? Wetness.NEARLY_SUBMERGED : this.wetness;
-        var wetnessOffset = Math.min(17 * thisWetness.ordinal(), 50);
+        var wetnessOffset = Math.min((baseTemp - 3) * -4 * thisWetness.ordinal(), 50) + (mcPlayer.isInPowderSnow ? 20 : 0);
         float offset = 0f;
 
         if (!mcPlayer.isInWater()) {
-            if (hasLavaBucket) {
-                // If they have a lava bucket, override offset to 75.
+            if (hasLavaBucket || mcPlayer.isOnFire()) {
                 offset = 75f;
             } else {
-                // Otherwise, calculate the combined fire/lava offset.
                 offset = getFireLavaOffset(playerPos);
             }
         }
 
-        Integer altitudeOffset = (mcPlayer.getBlockY() - 60) / 5;
-        // Calculate bodyTemp.
-        bodyTemp = (baseTemp * 25 - wetnessOffset - altitudeOffset) + 60 + offset;
-        // Cap bodyTemp at 300.
-        bodyTemp = Math.min(bodyTemp, 300);
+        if (hasSnowBucket) {
+            offset -= 25f;
+        }
+
+        int altitudeOffset = (mcPlayer.getBlockY() - 60) / 5;
+        if (this.level.dimension().equals(Level.NETHER))
+            altitudeOffset = mcPlayer.getBlockY() / -5;
+        else if (this.level.dimension().equals(Level.END))
+            altitudeOffset = 0;
+
+        return Math.min((baseTemp * 25 - wetnessOffset - altitudeOffset) + 60 + offset, 300);
     }
 
 
@@ -223,10 +232,6 @@ public class LestoraPlayer {
         }
     }
 
-
-    // A single timer for state transitions.
-    private float transitionTimer = 0f;
-
     private void CalculateWetness() {
         long now = System.currentTimeMillis();
         if (lastUpdateTime == 0) {
@@ -241,14 +246,12 @@ public class LestoraPlayer {
         // For bodyTemp > 100: cap at 1 sec.
         float clampedTemp = Math.max(-100f, Math.min(bodyTemp, 100f));
         float drynessTime = (bodyTemp > 100) ? 1f : 30f - 0.125f * (clampedTemp + 100f);
-        System.out.println("Dryness Time: " + drynessTime);
 
         // Accumulate time since last state transition.
         transitionTimer += delta;
 
         // Get the current "raw" wetness from your utility.
         var rawWetness = WetnessUtil.getPlayerWetness(this.mcPlayer, this.supportingBlock);
-        System.out.println("Raw Wetness: " + rawWetness + ", Current Wetness: " + this.wetness);
 
         // Immediate upgrade: if the raw wetness is wetter than our current state.
         if (rawWetness.ordinal() > this.wetness.ordinal()) {
@@ -285,10 +288,6 @@ public class LestoraPlayer {
             transitionTimer = 0;
         }
     }
-
-
-
-
 
     private void CalculateSupportBlock() {
         if (this.supportingBlock != null) {
