@@ -17,6 +17,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -24,10 +25,13 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageType;
+import java.util.Collections;
 
 public class LestoraPlayer {
     private Player mcPlayer;
-    private final UUID uuid;
+    private UUID uuid;
     private EntityBlockInfo supportingBlock;
     private Wetness wetness = Wetness.DRY;
     private Biome biome;
@@ -36,19 +40,32 @@ public class LestoraPlayer {
 
     // Timers in seconds
     private long lastUpdateTime = 0;
-    private long lastUpdateTime2 = 0;
     private float transitionTimer = 0f;
+    private long lastSaveTime = 0;
 
     // Cache of nearby block states (cube from -5 to 5 in x,y,z)
     private final Map<BlockPos, BlockState> cachedBlockStates = new HashMap<>();
 
     // In-memory static collection of players
     private static final Map<UUID, LestoraPlayer> players = new HashMap<>();
-    private ClientLevel level;
 
-    public LestoraPlayer(Player player) {
+    public static Map<UUID, LestoraPlayer> getPlayers() {
+        return Collections.unmodifiableMap(players);
+    }
+    private ClientLevel level;
+    private int swimLevel;
+
+    private LestoraPlayer(Player player) {
         this.mcPlayer = player;
         this.uuid = player.getUUID();
+    }
+
+    public static LestoraPlayer get(Player player) {
+        return players.computeIfAbsent(player.getUUID(), key -> {
+            var lestoraPlayer = new LestoraPlayer(player);
+            lestoraPlayer.calcNew(player);
+            return lestoraPlayer;
+        });
     }
 
     public UUID getUuid() {
@@ -75,23 +92,56 @@ public class LestoraPlayer {
         return biome;
     }
 
-    public static LestoraPlayer get(Player player) {
-        return players.computeIfAbsent(player.getUUID(), key -> {
-            var lestoraPlayer = new LestoraPlayer(player);
-            lestoraPlayer.calc(player);
-            return lestoraPlayer;
-        });
+    public int getSwimLevel() {
+        return this.swimLevel;
+    }
+
+    public void setSwimLevel(int level) {
+        this.swimLevel = level;
+    }
+
+    private void saveDBValues() {
+        SQLiteManager.setSwimLevel(this.uuid, this.swimLevel);
+    }
+
+    private void calcNew(Player player) {
+        this.swimLevel = SQLiteManager.getSwimLevel(this.uuid);
+        calc(player);
     }
 
     public void calc(Player player) {
         this.level = Minecraft.getInstance().level;
         if (this.level == null || this.mcPlayer == null) return;
         this.mcPlayer = player;
+        this.uuid = player.getUUID();
 
-        cacheNearbyBlocks();
+        CacheNearbyBlocks();
         CalculateSupportBlock();
         CalculateWetness();
         RubberBand(this.bodyTemp, CalculateBodyTemp());
+
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastSaveTime >= 5000) {
+            saveDBValues();
+            lastSaveTime = currentTime;
+        }
+    }
+
+    public void CalculateDamage(Player player) {
+        if (this.wetness == Wetness.FULLY_SUBMERGED || this.wetness == Wetness.NEARLY_SUBMERGED) {
+            if (this.swimLevel < 3) {
+                Holder<DamageType> dmgTypeHolder = player.level().registryAccess().registries()
+                        .filter(entry -> entry.key().equals(Registries.DAMAGE_TYPE))
+                        .map(entry -> (Registry<DamageType>) entry.value())
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalStateException("Damage type registry not found"))
+                        .getOrThrow(DamageTypes.DROWN);
+
+                DamageSource drowningSource = new DamageSource(dmgTypeHolder);
+                player.hurt(drowningSource, 5.0F);
+                System.out.println("Bro... l2swim");
+            }
+        }
     }
 
     private void RubberBand(float current, float target) {
@@ -103,7 +153,7 @@ public class LestoraPlayer {
     }
 
     // Cache a cube of block states around the player (from -5 to +5 in x, y, and z).
-    private void cacheNearbyBlocks() {
+    private void CacheNearbyBlocks() {
         BlockPos playerPos = mcPlayer.blockPosition();
         cachedBlockStates.clear();
         for (int x = -5; x <= 5; x++) {

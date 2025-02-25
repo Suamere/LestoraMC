@@ -7,7 +7,6 @@
   "mixins": [
     "LevelRendererMixin",
     "ClientLevelMixin",
-    "EntityMixin",
     "LightTextureMixin"
   ],
   "client": [],

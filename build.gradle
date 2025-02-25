@@ -54,7 +54,21 @@ minecraft {
 }
 
 jar {
+    from {
+        configurations.sqliteLib.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    // Your existing jar config, for example:
     exclude('mixins.lestora.refmap.json')
+    manifest {
+        attributes([
+                'Specification-Title'     : mod_id,
+                'Specification-Vendor'    : mod_authors,
+                'Specification-Version'   : '1',
+                'Implementation-Title'    : project.name,
+                'Implementation-Version'  : project.jar.archiveVersion,
+                'Implementation-Vendor'   : mod_authors
+        ])
+    }
 }
 
 tasks.configureEach { task ->
@@ -71,10 +85,15 @@ repositories {
     // ForgeGradle automatically adds the Forge maven and Maven Central for you
 }
 
+configurations {
+    sqliteLib
+}
+
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     annotationProcessor "org.spongepowered:mixin:0.8.7:processor"
     implementation 'org.xerial:sqlite-jdbc:3.41.2.1'
+    sqliteLib 'org.xerial:sqlite-jdbc:3.41.2.1'
 }
 
 mixin {

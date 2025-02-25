@@ -54,9 +54,10 @@ public class DebugOverlay {
         String text1 = "Wetness: " + lestoraPlayer.getWetness();
         String text2 = "Supporting Block: " + StandingBlockUtil.getSupportingBlockType(supportPos) + " " + supportPos.getSupportingPos();
         String text3 = "Body Temp: " + lestoraPlayer.getBodyTemp();
+        String text4 = "Swim Level: " + lestoraPlayer.getSwimLevel();
 
         // Draw them with a starting y of 10 and 15px spacing.
-        drawCenteredLines(guiGraphics, mc, 10, 15, text1, text2, text3);
+        drawCenteredLines(guiGraphics, mc, 10, 15, text1, text2, text3, text4);
     }
 
     private static void drawCenteredLines(GuiGraphics guiGraphics, Minecraft mc, int startY, int lineSpacing, String... lines) {
