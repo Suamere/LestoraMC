@@ -27,9 +27,14 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.Collections;
 
 public class LestoraPlayer {
+    private static final Logger LOGGER = LogManager.getLogger();
+
     private Player mcPlayer;
     private UUID uuid;
     private EntityBlockInfo supportingBlock;
@@ -128,19 +133,48 @@ public class LestoraPlayer {
     }
 
     public void CalculateDamage(Player player) {
-        if (this.wetness == Wetness.FULLY_SUBMERGED || this.wetness == Wetness.NEARLY_SUBMERGED) {
-            if (this.swimLevel < 3) {
-                Holder<DamageType> dmgTypeHolder = player.level().registryAccess().registries()
-                        .filter(entry -> entry.key().equals(Registries.DAMAGE_TYPE))
-                        .map(entry -> (Registry<DamageType>) entry.value())
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalStateException("Damage type registry not found"))
-                        .getOrThrow(DamageTypes.DROWN);
+        var dmgRegistry = player.level().registryAccess().registries()
+                .filter(entry -> entry.key().equals(Registries.DAMAGE_TYPE))
+                .map(entry -> (Registry<DamageType>) entry.value())
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Damage type registry not found"));
 
-                DamageSource drowningSource = new DamageSource(dmgTypeHolder);
-                player.hurt(drowningSource, 5.0F);
-                System.out.println("Bro... l2swim");
-            }
+        float freezeDmg = 0;
+        float heatDmg = 0;
+        int drownDmg = 0;
+
+        if (this.wetness == Wetness.FULLY_SUBMERGED || this.wetness == Wetness.NEARLY_SUBMERGED)
+            drownDmg = switch (this.swimLevel) {
+                case 0 -> (this.wetness == Wetness.FULLY_SUBMERGED ? 20 : 15);
+                case 1 -> (this.wetness == Wetness.FULLY_SUBMERGED ? 15 : 10);
+                case 2 -> (this.wetness == Wetness.FULLY_SUBMERGED ? 10 : 5);
+                default -> 0;
+            };
+
+        if (this.bodyTemp < 60){
+            freezeDmg = -1 * (60 - this.bodyTemp) / 2;
+        }
+
+        if (this.bodyTemp > 110){
+            heatDmg = (this.bodyTemp - 110) / 2;
+        }
+
+        if (freezeDmg > 0){
+            Holder<DamageType> dmgTypeHolder = dmgRegistry.getOrThrow(DamageTypes.FREEZE);
+            DamageSource drowningSource = new DamageSource(dmgTypeHolder);
+            player.hurt(drowningSource, freezeDmg);
+        }
+
+        if (heatDmg > 0){
+            Holder<DamageType> dmgTypeHolder = dmgRegistry.getOrThrow(DamageTypes.ON_FIRE);
+            DamageSource drowningSource = new DamageSource(dmgTypeHolder);
+            player.hurt(drowningSource, heatDmg);
+        }
+
+        if (drownDmg > 0) {
+            Holder<DamageType> dmgTypeHolder = dmgRegistry.getOrThrow(DamageTypes.DROWN);
+            DamageSource drowningSource = new DamageSource(dmgTypeHolder);
+            player.hurt(drowningSource, drownDmg);
         }
     }
 
@@ -174,6 +208,7 @@ public class LestoraPlayer {
 
         // If player's altitude is below 60 and the biome is not one of the underground biomes,
         // then override baseTemp to 0.5.
+        var timeOffset = 0;
         if (mcPlayer.getBlockY() < 60) {
             ResourceLocation biomeRL = getBiomeResourceLocation(this.level, this.biome);
             if (biomeRL == null ||
@@ -182,6 +217,9 @@ public class LestoraPlayer {
                             && !biomeRL.equals(ResourceLocation.parse("minecraft:deep_dark")))) {
                 baseTemp = 0.5f;
             }
+        }
+        else if (this.level.dimension().equals(Level.OVERWORLD)) {
+            timeOffset = daytimeTempOffset(this.level.getDayTime());
         }
 
         // Immediate check: if the player is directly in lava or fire.
@@ -233,7 +271,20 @@ public class LestoraPlayer {
         else if (this.level.dimension().equals(Level.END))
             altitudeOffset = 0;
 
-        return Math.min((baseTemp * 25 - wetnessOffset - altitudeOffset) + 60 + offset, 300);
+        return Math.min((baseTemp * 25) - wetnessOffset - altitudeOffset + 60 + timeOffset + offset, 300);
+    }
+
+    public static int daytimeTempOffset(long time) {
+        long tickTime = time % 24000;
+        if (tickTime < 6000) { // Sunrise to Noon
+            return (int) (0 + (30.0 / 6000 * tickTime));
+        } else if (tickTime < 12000) { // Noon to Sunset
+            return (int) (30 - (30.0 / 6000 * (tickTime - 6000)));
+        } else if (tickTime < 18000) { // Sunset to Midnight
+            return (int) (0 - (30.0 / 6000 * (tickTime - 12000)));
+        } else { // Midnight to next Sunrise
+            return (int) (-30 + (30.0 / 6000 * (tickTime - 18000)));
+        }
     }
 
 
@@ -319,11 +370,14 @@ public class LestoraPlayer {
 
         // If we were FULLY_SUBMERGED but now have less wet raw value,
         // immediately drop to NEARLY_SUBMERGED.
-        if (this.wetness == Wetness.FULLY_SUBMERGED &&
-                rawWetness.ordinal() < Wetness.FULLY_SUBMERGED.ordinal()) {
+        if (this.wetness == Wetness.FULLY_SUBMERGED && rawWetness.ordinal() < Wetness.FULLY_SUBMERGED.ordinal()) {
             this.wetness = Wetness.NEARLY_SUBMERGED;
             transitionTimer = 0;
             return;
+        }
+
+        if (this.wetness == Wetness.NEARLY_SUBMERGED && this.supportingBlock.getSupportingBlock().getBlock() != Blocks.WATER) {
+            this.wetness = Wetness.SOAKED;
         }
 
         // If accumulated time exceeds drynessTime, downgrade one stage.

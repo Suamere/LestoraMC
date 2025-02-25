@@ -2,11 +2,11 @@
 
 LestoraRPG will eventually add a bunch of small features that make Minecraft more hardcore or realistic.  Not graphically, but functionally.  For example, more likelihood for blocks to collapse when you are mining, better trading, and some utilities.
 
-Current Development: Swimming complexity.  If you get in over your head, metaphorically speaking, you're going to feel quite the trauma (mentally and physically).  Until you learn to swim.
+**Swimming complexity:  If you get in over your head, metaphorically speaking, you're going to feel quite the trauma (mentally and physically).  Until you learn to swim.**
+**Body Temp: If you're too hot or cold, you will take damage.  To see your temperature, for now, run the showDebug command.  Definitely don't hold a bucket full of lava, for now.**
 
-Next Development: Learning to swim.  Time in water, Time in game, Particular potions (water breathing), turtle helmet, etc.  As vanilla as possible.  Until then... use a boat!
-
-Upcoming Development: Wetness == Coldness... especially in cold biomes.
+Current Development 1: Lighting Help.  Using my current highlighting capabilities, if you shift and there are torches nearby, the ground should highlight light orange on the edge (0 ground light), and light blue at the furthest location you should place a torch to ensure 1 light between two torches?
+Current Development 2: Learning to swim.  Time in water, Time in game, Particular potions (water breathing), turtle helmet, etc.  As vanilla as possible.  Until then... use a boat!
 
 ## Features
 - **Configuration:** Added lestora-common.toml, currently for configuring dynamic lighting.
@@ -21,6 +21,7 @@ Upcoming Development: Wetness == Coldness... especially in cold biomes.
 3. Launch Minecraft with the Forge profile.
 
 ## Commands
+- Use the command `/lestora setLevels swimLevel <0-3>` to set your swimLevel.  Defaults to 0, which means you essentially insta-die in water that's two deep (punny).  Level 3 means you can swim.
 - Use the command `/lestora highlightRadius <radius>` to highlight a spherical area of breakable blocks from your current location.
 - Use the command `/lestora showDebug [true/false]` to show current debug info related to beta development.
 - Use the command `/lestora dynamicLighting [true/false]` to enable or disable dynamic lighting in this mod. (Defaults to true)

@@ -26,7 +26,7 @@ public class ServerSideCommand {
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         tickCount++;
-        if (tickCount >= 100) { // roughly 5 seconds at 20 ticks per second
+        if (tickCount >= 20) { // roughly 20 ticks per second
             tickCount = 0;
             var server = event.getServer();
             for (LestoraPlayer lp : LestoraPlayer.getPlayers().values()) {
