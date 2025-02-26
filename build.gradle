@@ -92,6 +92,7 @@ configurations {
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     annotationProcessor "org.spongepowered:mixin:0.8.7:processor"
+    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
     implementation 'org.xerial:sqlite-jdbc:3.41.2.1'
     sqliteLib 'org.xerial:sqlite-jdbc:3.41.2.1'
 }

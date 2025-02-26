@@ -18,6 +18,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -73,6 +74,26 @@ public class LestoraPlayer {
         });
     }
 
+    private Villager focusedVillager;
+    public boolean TryFocusOnVillager(Villager villager) {
+        if (focusedVillager == villager) {
+            return false;
+        }
+        UnfocusCurrentVillager();
+        if (villager != null) {
+            focusedVillager = villager;
+            villager.setNoAi(true);
+            return true;
+        }
+        return false;
+    }
+
+    public void UnfocusCurrentVillager() {
+        if (focusedVillager != null)
+            focusedVillager.setNoAi(false);
+        focusedVillager = null;
+    }
+
     public UUID getUuid() {
         return uuid;
     }
@@ -106,11 +127,11 @@ public class LestoraPlayer {
     }
 
     private void saveDBValues() {
-        SQLiteManager.setSwimLevel(this.uuid, this.swimLevel);
+        PlayerRepo.setSwimLevel(this.uuid, this.swimLevel);
     }
 
     private void calcNew(Player player) {
-        this.swimLevel = SQLiteManager.getSwimLevel(this.uuid);
+        this.swimLevel = PlayerRepo.getSwimLevel(this.uuid);
         calc(player);
     }
 
