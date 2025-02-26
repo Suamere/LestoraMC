@@ -16,7 +16,8 @@ public class VillagerRepo {
                 // Create table for villager_data (villager_uuid and name)
                 String sqlVillagerData = "CREATE TABLE IF NOT EXISTS villager_data ("
                         + "villager_uuid TEXT PRIMARY KEY, "
-                        + "name TEXT"
+                        + "name TEXT UNIQUE, "
+                        + "personality TEXT"
                         + ")";
                 conn.createStatement().execute(sqlVillagerData);
 
@@ -33,21 +34,55 @@ public class VillagerRepo {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
-            return null;
         });
     }
 
-    public static void addVillager(UUID villagerUUID, String name) {
+    public static void addVillager(UUID villagerUUID, String name, String personality) {
         SQLiteManager.withConn(conn -> {
             try (PreparedStatement ps = conn.prepareStatement(
-                    "INSERT OR REPLACE INTO villager_data (villager_uuid, name) VALUES (?, ?)")) {
+                    "INSERT OR REPLACE INTO villager_data (villager_uuid, name, personality) VALUES (?, ?, ?)")) {
                 ps.setString(1, villagerUUID.toString());
                 ps.setString(2, name);
+                ps.setString(3, personality);
                 ps.executeUpdate();
             } catch (SQLException e) {
                 e.printStackTrace();
             }
+        });
+    }
+
+    public static VillagerEntity getVillager(UUID villagerUUID) {
+        return SQLiteManager.withConn(conn -> {
+            String sql = "SELECT name, personality FROM villager_data WHERE villager_uuid = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, villagerUUID.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        String name = rs.getString("name");
+                        String personality = rs.getString("personality");
+                        return new VillagerEntity(name, personality);
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
             return null;
+        });
+    }
+
+    public static List<String> getAllVillagerNames() {
+        return SQLiteManager.withConn(conn -> {
+            List<String> names = new ArrayList<>();
+            String sql = "SELECT name FROM villager_data";
+            try (PreparedStatement ps = conn.prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    names.add(rs.getString("name"));
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            return names;
         });
     }
 
@@ -67,7 +102,6 @@ public class VillagerRepo {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
-            return null;
         });
     }
 

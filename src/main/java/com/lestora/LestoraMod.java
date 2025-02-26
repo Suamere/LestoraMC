@@ -31,6 +31,7 @@ public class LestoraMod {
         constructContext.registerConfig(ModConfig.Type.COMMON, ConfigLighting.LIGHTING_CONFIG, "lestora-lighting.toml");
         constructContext.registerConfig(ModConfig.Type.COMMON, ConfigBiomeTemp.BIOME_CONFIG, "lestora-biome.toml");
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(this);
+        AIRequestThread.startBackgroundProcessing();
     }
 
     // Listen for block break events

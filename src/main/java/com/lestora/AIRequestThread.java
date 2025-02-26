@@ -13,37 +13,45 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class AIRequestThread {
     private static final OkHttpClient client = new OkHttpClient();
     private static final MediaType JSON_MEDIA = MediaType.get("application/json; charset=utf-8");
     private static final Gson gson = new Gson();
-    private static final Map<UUID, String> msgResponses = new ConcurrentHashMap<>();
+    private static final Map<UUID, JsonObject> msgResponses = new ConcurrentHashMap<>();
+    public static JsonObject getMessageResponse(UUID msgId) { return msgResponses.get(msgId); }
 
-    public static String getMessageResponse(UUID msgId) {
-        return msgResponses.get(msgId);
-    }
-
-    public static void getNameSuggestion(UUID msgID, List<String> currentNames) {
-        try {
-            String usedNames = String.join(",", currentNames);
-            String systemContent = "Your only goal is to provide a single word, a single unique name, given the user prompt.";
-            String userContent = "Recommend the first name for a new character. It can be common, or it can lean medieval. It can be masculine or feminine. "
+    public static void getNewVillager(UUID msgID, List<String> existingNames) { newVillager.put(msgID, existingNames); }
+    private static JsonObject tryGetNewVillager(List<String> existingNames) {
+        JsonObject response = new JsonObject();
+        String suggestion;
+        while (true) {
+            String usedNames = String.join(",", existingNames);
+            String nameSysContent = "Your only goal is to provide a single word, a single unique name, given the user prompt.";
+            String userSysContent = "Recommend the first name for a new character. It can be common, or it can lean medieval. It can be masculine or feminine. "
                     + "Be creative, but lean toward real names. Respond with a single word, which should be that name. The only names off the table are the ones listed here: " + usedNames;
-            msgResponses.put(msgID, sendAI(systemContent, userContent));
-        } catch (Exception e) {
-            e.printStackTrace();
+            suggestion = sendAI(nameSysContent, userSysContent);
+            if (!existingNames.contains(suggestion)) {
+                response.addProperty("name", suggestion);
+                break;
+            }
         }
+        String personalitySysContent = "You are a medieval person named " + suggestion + ". You speak in plain language, not medieval dialect. Stay in character at all times, and use your name as a foundation for how you answer questions.";
+        String personalityUserContent = "Describe your personality. Things you like and dislike, your general disposition, and more. Be creative, as this is useful for all future discussion.";
+        response.addProperty("personality", sendAI(personalitySysContent, personalityUserContent));
+        return response;
     }
 
-    public static void chatWithVillager(UUID msgID, LestoraVillager lv, String userContent) {
-        try {
-            String systemContent = "You are a medieval person named " + lv.name + ". Do Not talk with a medieval dialect or accent. Your current personality can be summed up as: " + lv.getPersonality() + ". "
-                    + "Be creative. Any user request that you get, simply answer in first person. Keep your responses well below 300 char length.";
-            msgResponses.put(msgID, sendAI(systemContent, userContent));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    public static void chatWithVillager(UUID msgID, LestoraVillager lv, String userContent) { villagerChat.put(msgID, new ChatWithVillager(lv, userContent)); }
+    private static JsonObject tryChatWithVillager(LestoraVillager lv, String userContent) {
+        JsonObject response = new JsonObject();
+        String systemContent = "You are a medieval person named " + lv.name + ". Do not talk with a medieval dialect or accent. Your current personality can be summed up as: " + lv.getPersonality() + ". "
+                + "Be creative. Any user request that you get, simply answer in first person. Keep your responses well below 300 char length.";
+        response.addProperty("response", sendAI(systemContent, userContent));
+        return response;
     }
 
     private static String sendAI(String systemContent, String userContent) {
@@ -83,6 +91,58 @@ public class AIRequestThread {
         } catch (Exception e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    private static class ChatWithVillager {
+        private final LestoraVillager villager;
+        private final String userContent;
+        public ChatWithVillager(LestoraVillager villager, String content) {
+            this.villager = villager;
+            this.userContent = content;
+        }
+
+        public LestoraVillager getVillager() {
+            return villager;
+        }
+
+        public String getUserContent() {
+            return userContent;
+        }
+    }
+
+    private static final ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
+    public static void startBackgroundProcessing() {
+        executor.scheduleAtFixedRate(() -> {
+            iterateNewVillagers();
+            iterateVillagerChats();
+        }, 0, 5, TimeUnit.SECONDS);
+    }
+
+    private static final Map<UUID, List<String>> newVillager = new ConcurrentHashMap<>();
+    private static final Map<UUID, ChatWithVillager> villagerChat = new ConcurrentHashMap<>();
+    private static void iterateNewVillagers() {
+        var iterator = newVillager.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            try {
+                msgResponses.put(entry.getKey(), tryGetNewVillager(entry.getValue()));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            iterator.remove();
+        }
+    }
+    private static void iterateVillagerChats() {
+        var iterator = villagerChat.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            try {
+                msgResponses.put(entry.getKey(), tryChatWithVillager(entry.getValue().getVillager(), entry.getValue().getUserContent()));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            iterator.remove();
         }
     }
 }

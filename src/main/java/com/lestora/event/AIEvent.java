@@ -1,8 +1,6 @@
 package com.lestora.event;
 
 import com.lestora.data.LestoraVillager;
-import com.lestora.data.VillagerConversations;
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.npc.Villager;
@@ -30,19 +28,9 @@ public class AIEvent {
         var newFocus = lestoraPlayer.TryFocusOnVillager(villager);
 
         if (newFocus) {
-            // Do this in LestoraVillager or LestoraPlayer so that it can bet the new name and then set up a callback event to continue the conversation?
-            if (villager.getCustomName() == null) {
-                VillagerConversations.villagerCount++;
-                String newName = "Villager" + VillagerConversations.villagerCount;
-                villager.setCustomName(Component.literal(newName).withStyle(ChatFormatting.GOLD));
-            }
-
-            UUID villagerUUID = villager.getUUID();
-            if (!VillagerConversations.villagerConversations.containsKey(villagerUUID)) {
-                String name = villager.getCustomName() != null ? villager.getCustomName().getString() : "Villager";
-                LestoraVillager lv = new LestoraVillager(villagerUUID, name);
-                VillagerConversations.villagerConversations.put(villagerUUID, lv);
-            }
+            // Do this in LestoraVillager or LestoraPlayer so that it can get the new name and then set up a callback event to continue the conversation?
+            var lestoraVillager = LestoraVillager.get(villager);
+            lestoraVillager.newFocus(lestoraPlayer);
         }
     }
 
@@ -54,21 +42,5 @@ public class AIEvent {
     @SubscribeEvent
     public static void onPlayerRightClickItem(PlayerInteractEvent.RightClickItem event) {
         LestoraPlayer.get(event.getEntity()).UnfocusCurrentVillager();
-    }
-
-    // Tick event to check and display outgoing messages
-    @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent event) {
-        if (!(event.player instanceof ServerPlayer serverPlayer)) {
-            return;
-        }
-
-        // Iterate through our stored conversations
-        for (LestoraVillager lv : VillagerConversations.villagerConversations.values()) {
-            if (lv.outgoingMessage != null) {
-                serverPlayer.sendSystemMessage(Component.literal(lv.name + " says, \"" + lv.outgoingMessage + "\""));
-                lv.outgoingMessage = null;
-            }
-        }
     }
 }

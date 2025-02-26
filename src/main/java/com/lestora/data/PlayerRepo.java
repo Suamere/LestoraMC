@@ -50,8 +50,8 @@ public class PlayerRepo {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
-            setSwimLevel(uuid, 1);
-            return 1;
+            setSwimLevel(uuid, 0);
+            return 0;
         });
     }
 }

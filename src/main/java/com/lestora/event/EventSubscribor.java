@@ -2,6 +2,7 @@ package com.lestora.event;
 
 import com.lestora.HighlightConfig;
 import com.lestora.data.LestoraPlayer;
+import com.lestora.data.LestoraVillager;
 import com.lestora.util.TestLightConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -55,6 +56,9 @@ public class EventSubscribor {
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         var level = Minecraft.getInstance().level;
         if (level == null) return;
+
+        LestoraVillager.processNewVillagers();
+        LestoraVillager.processChatMessages();
 
         if (TestLightConfig.getEnabled()) {
             for (Player player : level.players()) {

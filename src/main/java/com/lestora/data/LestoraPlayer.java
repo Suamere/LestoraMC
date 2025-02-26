@@ -16,7 +16,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.player.Player;
@@ -52,7 +54,6 @@ public class LestoraPlayer {
     // Cache of nearby block states (cube from -5 to 5 in x,y,z)
     private final Map<BlockPos, BlockState> cachedBlockStates = new HashMap<>();
 
-    // In-memory static collection of players
     private static final Map<UUID, LestoraPlayer> players = new HashMap<>();
 
     public static Map<UUID, LestoraPlayer> getPlayers() {
@@ -116,6 +117,10 @@ public class LestoraPlayer {
 
     public Biome getBiome() {
         return biome;
+    }
+
+    public String getName() {
+        return mcPlayer.getName().getString();
     }
 
     public int getSwimLevel() {
@@ -440,5 +445,14 @@ public class LestoraPlayer {
                 .map(entry -> (Registry<Biome>) entry.value())
                 .findFirst();
         return maybeBiomeRegistry.map(registry -> registry.getKey(biome)).orElse(null);
+    }
+
+    public void sendMsg(String msg) {
+        if (mcPlayer instanceof ServerPlayer serverPlayer) {
+            serverPlayer.sendSystemMessage(Component.literal(msg));
+        }
+        else {
+            mcPlayer.displayClientMessage(Component.literal(msg), false);
+        }
     }
 }
