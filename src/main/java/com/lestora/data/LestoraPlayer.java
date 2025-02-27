@@ -75,18 +75,22 @@ public class LestoraPlayer {
         });
     }
 
-    private Villager focusedVillager;
-    public boolean TryFocusOnVillager(Villager villager) {
-        if (focusedVillager == villager) {
+    private LestoraVillager focusedVillager;
+    public boolean TryFocusOnVillager(LestoraVillager villager) {
+        if (villager == null) {
+            UnfocusCurrentVillager();
             return false;
         }
-        UnfocusCurrentVillager();
-        if (villager != null) {
+
+        if (focusedVillager != null && focusedVillager.getUUID().equals(villager.getUUID())) {
             focusedVillager = villager;
-            villager.setNoAi(true);
-            return true;
+            return false;
         }
-        return false;
+
+        UnfocusCurrentVillager();
+        focusedVillager = villager;
+        villager.setNoAi(true);
+        return true;
     }
 
     public void UnfocusCurrentVillager() {
@@ -454,5 +458,9 @@ public class LestoraPlayer {
         else {
             mcPlayer.displayClientMessage(Component.literal(msg), false);
         }
+    }
+
+    public LestoraVillager getFocus() {
+        return focusedVillager;
     }
 }

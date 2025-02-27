@@ -5,6 +5,7 @@ import com.lestora.AIRequestThread;
 import net.minecraft.world.entity.npc.Villager;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LestoraVillager {
     private final Villager mcVillager;
@@ -12,14 +13,14 @@ public class LestoraVillager {
     public String name;
     private String personality;
     private UUID newVillagerMsgID; // Should almost always be null, except when starting a fresh villager
-    private static final Map<UUID, ChatMessage> chatMessages = new HashMap<>();
+    private static final Map<UUID, ChatMessage> chatMessages = new ConcurrentHashMap<>();
 
     public String getPersonality() {
         return personality;
     }
 
-    private static final Map<UUID, LestoraVillager> newVillagers = new HashMap<>();
-    private static final Map<UUID, LestoraVillager> villagers = new HashMap<>();
+    private static final Map<UUID, LestoraVillager> newVillagers = new ConcurrentHashMap<>();
+    private static final Map<UUID, LestoraVillager> villagers = new ConcurrentHashMap<>();
 
     public static Map<UUID, LestoraVillager> getVillagers() {
         return Collections.unmodifiableMap(villagers);
@@ -32,15 +33,17 @@ public class LestoraVillager {
 
     public static LestoraVillager get(Villager villager) {
         return villagers.computeIfAbsent(villager.getUUID(), key -> {
+            System.out.println("New Villager in memory: " + key);
             var lestoraVillager = new LestoraVillager(villager);
-            lestoraVillager.calcNew(villager);
+            lestoraVillager.calcNew();
             return lestoraVillager;
         });
     }
 
-    private void calcNew(Villager villager) {
+    private void calcNew() {
         var dbVillager = VillagerRepo.getVillager(this.uuid);
         if (dbVillager == null) {
+            System.out.println("Villager not in DB: " + this.uuid + " -- queue Name and Personality.");
             this.newVillagerMsgID = UUID.randomUUID();
             AIRequestThread.getNewVillager(this.newVillagerMsgID, VillagerRepo.getAllVillagerNames());
             newVillagers.put(this.newVillagerMsgID, this);
@@ -73,6 +76,7 @@ public class LestoraVillager {
                     lestoraVillager.newVillagerMsgID = null;
                     lestoraVillager.name = aiResponse.get("name").getAsString();
                     lestoraVillager.personality = aiResponse.get("personality").getAsString();
+                    System.out.print("New Villager AI Response (" + lestoraVillager.uuid + "): " + lestoraVillager.name + " : " + lestoraVillager.personality);
                     VillagerRepo.addVillager(lestoraVillager.uuid, lestoraVillager.name, lestoraVillager.personality);
                     iterator.remove();
                 }
@@ -95,12 +99,19 @@ public class LestoraVillager {
         }
     }
 
-    public void newFocus(LestoraPlayer lestoraPlayer) {
+    public void tell(LestoraPlayer lestoraPlayer, String userContent) {
         var newFocusMsgID = UUID.randomUUID();
-        var userContent = "Hello, I'm " + lestoraPlayer.getName();
         var chatMsg = new ChatMessage(this, lestoraPlayer, userContent);
         chatMessages.put(newFocusMsgID, chatMsg);
         AIRequestThread.chatWithVillager(newFocusMsgID, this, userContent);
+    }
+
+    public UUID getUUID() {
+        return this.uuid;
+    }
+
+    public void setNoAi(boolean b) {
+        this.mcVillager.setNoAi(b);
     }
 
     public static class ChatMessage {

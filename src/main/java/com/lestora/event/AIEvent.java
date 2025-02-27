@@ -4,6 +4,7 @@ import com.lestora.data.LestoraVillager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.npc.Villager;
+import net.minecraftforge.event.ServerChatEvent;
 import net.minecraftforge.event.TickEvent.PlayerTickEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -21,16 +22,20 @@ public class AIEvent {
         if (!(event.getTarget() instanceof Villager villager)) {
             return;
         }
-        // Cancel default interaction
         event.setCanceled(true);
 
         var lestoraPlayer = LestoraPlayer.get(event.getEntity());
-        var newFocus = lestoraPlayer.TryFocusOnVillager(villager);
+        var lestoraVillager = LestoraVillager.get(villager);
+        lestoraPlayer.TryFocusOnVillager(lestoraVillager);
+    }
 
-        if (newFocus) {
-            // Do this in LestoraVillager or LestoraPlayer so that it can get the new name and then set up a callback event to continue the conversation?
-            var lestoraVillager = LestoraVillager.get(villager);
-            lestoraVillager.newFocus(lestoraPlayer);
+    @SubscribeEvent
+    public static void onPlayerChat(ServerChatEvent event) {
+        ServerPlayer player = event.getPlayer();
+        LestoraPlayer lestoraPlayer = LestoraPlayer.get(player);
+        LestoraVillager lestoraVillager = lestoraPlayer.getFocus();
+        if (lestoraVillager != null) {
+            lestoraVillager.tell(lestoraPlayer, event.getMessage().getString());
         }
     }
 

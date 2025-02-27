@@ -40,7 +40,7 @@ public class AIRequestThread {
             }
         }
         String personalitySysContent = "You are a medieval person named " + suggestion + ". You speak in plain language, not medieval dialect. Stay in character at all times, and use your name as a foundation for how you answer questions.";
-        String personalityUserContent = "Describe your personality. Things you like and dislike, your general disposition, and more. Be creative, as this is useful for all future discussion.";
+        String personalityUserContent = "Describe your personality. Things you like and dislike, your general disposition, and more. Be creative, as this is useful for all future discussion.  But do not include recognizable places like Camelot, or random names of fellow people.  Any nouns you use should be regarding things like pets or hobbies.";
         response.addProperty("personality", sendAI(personalitySysContent, personalityUserContent));
         return response;
     }
@@ -48,9 +48,16 @@ public class AIRequestThread {
     public static void chatWithVillager(UUID msgID, LestoraVillager lv, String userContent) { villagerChat.put(msgID, new ChatWithVillager(lv, userContent)); }
     private static JsonObject tryChatWithVillager(LestoraVillager lv, String userContent) {
         JsonObject response = new JsonObject();
-        String systemContent = "You are a medieval person named " + lv.name + ". Do not talk with a medieval dialect or accent. Your current personality can be summed up as: " + lv.getPersonality() + ". "
-                + "Be creative. Any user request that you get, simply answer in first person. Keep your responses well below 300 char length.";
-        response.addProperty("response", sendAI(systemContent, userContent));
+        String systemContent = "You are a medieval person named " + lv.name + ". Do not talk with a medieval dialect or accent. "
+                + "Any user request that you get, simply answer in first person. "
+                + "Assume you know nothing in general about the world unless it's in your chat history.  So if you're asked \"Do you know Jessica\", and there is nothing in your chat history to suggest you do, then you don't. "
+                + "User requests are formatted as a narrative. That means if it the user states that Jonathan says, \"Hello\", then you do not know his name is Jonathan yet.  But when the user states that Jonathan says \"My name is Jonathan\", then you do know their name from then on. Keep your responses around 10 words."
+                + "Your current personality can be summed up as all of the following: " + lv.getPersonality() + ".";
+        var rawChatResponse = sendAI(systemContent, userContent);
+        System.out.println("AI System Input: " + systemContent);
+        System.out.println("AI User Input: " + userContent);
+        System.out.println("Raw AI Chat Response: " + rawChatResponse);
+        response.addProperty("response", rawChatResponse);
         return response;
     }
 
