@@ -3,15 +3,16 @@ package com.lestora;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.lestora.data.LestoraVillager;
+import com.lestora.data.VillagerInteraction;
+import com.lestora.data.VillagerInteractionType;
+import com.lestora.data.VillagerRepo;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -33,7 +34,7 @@ public class AIRequestThread {
             String nameSysContent = "Your only goal is to provide a single word, a single unique name, given the user prompt.";
             String userSysContent = "Recommend the first name for a new character. It can be common, or it can lean medieval. It can be masculine or feminine. "
                     + "Be creative, but lean toward real names. Respond with a single word, which should be that name. The only names off the table are the ones listed here: " + usedNames;
-            suggestion = sendAI(nameSysContent, userSysContent);
+            suggestion = sendAI(nameSysContent, userSysContent, null, null);
             if (!existingNames.contains(suggestion)) {
                 response.addProperty("name", suggestion);
                 break;
@@ -41,19 +42,19 @@ public class AIRequestThread {
         }
         String personalitySysContent = "You are a medieval person named " + suggestion + ". You speak in plain language, not medieval dialect. Stay in character at all times, and use your name as a foundation for how you answer questions.";
         String personalityUserContent = "Describe your personality. Things you like and dislike, your general disposition, and more. Be creative, as this is useful for all future discussion.  But do not include recognizable places like Camelot, or random names of fellow people.  Any nouns you use should be regarding things like pets or hobbies.";
-        response.addProperty("personality", sendAI(personalitySysContent, personalityUserContent));
+        response.addProperty("personality", sendAI(personalitySysContent, personalityUserContent, null, null));
         return response;
     }
 
-    public static void chatWithVillager(UUID msgID, LestoraVillager lv, String userContent) { villagerChat.put(msgID, new ChatWithVillager(lv, userContent)); }
-    private static JsonObject tryChatWithVillager(LestoraVillager lv, String userContent) {
+    public static void chatWithVillager(UUID msgID, LestoraVillager lv, UUID fromPlayerUUID, String userContent) { villagerChat.put(msgID, new ChatWithVillager(lv, userContent, fromPlayerUUID)); }
+    private static JsonObject tryChatWithVillager(LestoraVillager lv, UUID fromPlayerUUID, String userContent) {
         JsonObject response = new JsonObject();
         String systemContent = "You are a medieval person named " + lv.name + ". Do not talk with a medieval dialect or accent. "
                 + "Any user request that you get, simply answer in first person. "
                 + "Assume you know nothing in general about the world unless it's in your chat history.  So if you're asked \"Do you know Jessica\", and there is nothing in your chat history to suggest you do, then you don't. "
                 + "User requests are formatted as a narrative. That means if it the user states that Jonathan says, \"Hello\", then you do not know his name is Jonathan yet.  But when the user states that Jonathan says \"My name is Jonathan\", then you do know their name from then on. Keep your responses around 10 words."
                 + "Your current personality can be summed up as all of the following: " + lv.getPersonality() + ".";
-        var rawChatResponse = sendAI(systemContent, userContent);
+        var rawChatResponse = sendAI(systemContent, userContent, fromPlayerUUID, lv.getUUID());
         System.out.println("AI System Input: " + systemContent);
         System.out.println("AI User Input: " + userContent);
         System.out.println("Raw AI Chat Response: " + rawChatResponse);
@@ -61,20 +62,42 @@ public class AIRequestThread {
         return response;
     }
 
-    private static String sendAI(String systemContent, String userContent) {
+    private static String sendAI(String systemContent, String newUserContent, UUID fromPlayerUUID, UUID toVillagerUUID) {
         try {
-            // Build messages array
+            // Build system message
             JsonObject systemMessage = new JsonObject();
             systemMessage.addProperty("role", "system");
             systemMessage.addProperty("content", systemContent);
 
+
+            // Create an array of messages, starting with the system message.
+            List<JsonObject> messages = new ArrayList<>();
+            messages.add(systemMessage);
+
+            List<VillagerInteraction> interactions = null;
+            if (fromPlayerUUID != null && toVillagerUUID != null) {
+                interactions = VillagerRepo.getInteractions(fromPlayerUUID, toVillagerUUID);
+            }
+            // For each VillagerInteraction, create a corresponding JsonObject.
+            if (interactions != null) {
+                for (VillagerInteraction interaction : interactions) {
+                    JsonObject interactionMessage = new JsonObject();
+                    interactionMessage.addProperty("role", mapInteractionRole(interaction.getType()));
+                    interactionMessage.addProperty("content", interaction.getValue());
+                    messages.add(interactionMessage);
+                }
+            }
+
+            // Build user message
             JsonObject userMessage = new JsonObject();
             userMessage.addProperty("role", "user");
-            userMessage.addProperty("content", userContent);
+            userMessage.addProperty("content", newUserContent);
+            messages.add(userMessage);
 
+            // Build payload
             JsonObject payload = new JsonObject();
             payload.addProperty("model", "mistral");
-            payload.add("messages", gson.toJsonTree(new JsonObject[]{systemMessage, userMessage}));
+            payload.add("messages", gson.toJsonTree(messages));
             payload.addProperty("stream", false);
 
             RequestBody body = RequestBody.create(payload.toString(), JSON_MEDIA);
@@ -101,12 +124,26 @@ public class AIRequestThread {
         }
     }
 
+    private static String mapInteractionRole(VillagerInteractionType type) {
+        String typeName = type.name();
+        if (typeName.startsWith("User")) {
+            return "user";
+        } else if (typeName.startsWith("Assistant")) {
+            return "assistant";
+        }
+        return "unknown";
+    }
+
+
     private static class ChatWithVillager {
         private final LestoraVillager villager;
         private final String userContent;
-        public ChatWithVillager(LestoraVillager villager, String content) {
+        private final UUID fromPlayerUUID;
+
+        public ChatWithVillager(LestoraVillager villager, String content, UUID fromPlayerUUID) {
             this.villager = villager;
             this.userContent = content;
+            this.fromPlayerUUID = fromPlayerUUID;
         }
 
         public LestoraVillager getVillager() {
@@ -115,6 +152,10 @@ public class AIRequestThread {
 
         public String getUserContent() {
             return userContent;
+        }
+
+        public UUID getPlayerUUID() {
+            return fromPlayerUUID;
         }
     }
 
@@ -145,7 +186,7 @@ public class AIRequestThread {
         while (iterator.hasNext()) {
             var entry = iterator.next();
             try {
-                msgResponses.put(entry.getKey(), tryChatWithVillager(entry.getValue().getVillager(), entry.getValue().getUserContent()));
+                msgResponses.put(entry.getKey(), tryChatWithVillager(entry.getValue().getVillager(), entry.getValue().getPlayerUUID(), entry.getValue().getUserContent()));
             } catch (Exception e) {
                 e.printStackTrace();
             }

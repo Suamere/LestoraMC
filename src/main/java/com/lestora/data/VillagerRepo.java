@@ -28,7 +28,7 @@ public class VillagerRepo {
                         + "player_uuid TEXT, "
                         + "chatRole INTEGER, "
                         + "value TEXT, "
-                        + "FOREIGN KEY(villager_uuid) REFERENCES villager_data(villager_uuid)"
+                        + "FOREIGN KEY(villager_uuid) REFERENCES villager_data(villager_uuid) ON DELETE CASCADE"
                         + ")";
                 conn.createStatement().execute(sqlVillagerInteraction);
             } catch (SQLException e) {
@@ -125,6 +125,19 @@ public class VillagerRepo {
                 e.printStackTrace();
             }
             return list;
+        });
+    }
+
+    public static void deleteVillager(UUID villagerUUID) {
+        SQLiteManager.withConn(conn -> {
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "DELETE FROM villager_data WHERE villager_uuid = ?")) {
+                ps.setString(1, villagerUUID.toString());
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            return null;
         });
     }
 }

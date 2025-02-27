@@ -27,6 +27,8 @@ public class SQLiteManager {
             Class.forName("org.sqlite.JDBC");
             connection = DriverManager.getConnection(DB_URL);
 
+            connection.createStatement().execute("PRAGMA foreign_keys = ON");
+
             PlayerRepo.init();
             VillagerRepo.init();
 

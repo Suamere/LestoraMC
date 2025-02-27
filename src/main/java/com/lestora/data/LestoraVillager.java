@@ -103,7 +103,7 @@ public class LestoraVillager {
         var newFocusMsgID = UUID.randomUUID();
         var chatMsg = new ChatMessage(this, lestoraPlayer, userContent);
         chatMessages.put(newFocusMsgID, chatMsg);
-        AIRequestThread.chatWithVillager(newFocusMsgID, this, userContent);
+        AIRequestThread.chatWithVillager(newFocusMsgID, this, lestoraPlayer.getUuid(), userContent);
     }
 
     public UUID getUUID() {
