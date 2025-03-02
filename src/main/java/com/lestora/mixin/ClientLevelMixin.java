@@ -1,6 +1,6 @@
 package com.lestora.mixin;
 
-import com.lestora.HighlightConfig;
+import com.lestora.highlight.HighlightSphere;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -20,8 +20,8 @@ public class ClientLevelMixin {
     private void onSetBlocksDirty(BlockPos pos, BlockState oldState, BlockState newState, CallbackInfo ci) {
         if (Minecraft.getInstance().player == null) return;
         UUID userId = Minecraft.getInstance().player.getUUID();
-        HighlightConfig config = HighlightConfig.getUserHighlightConfig(userId);
-        if (config == null || config.getHighlightRadius() <= 0) return;
+        HighlightSphere config = HighlightSphere.getUserHighlightConfig(userId);
+        if (config == null || !config.hasHighlights()) return;
 
         Level level = (Level)(Object)this;
         if (newState.is(Blocks.AIR)) {

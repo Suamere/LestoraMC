@@ -1,4 +1,4 @@
-package com.lestora.data;
+package com.lestora.common.data;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -7,7 +7,7 @@ import java.sql.*;
 import java.util.UUID;
 
 public class PlayerRepo {
-    private static final Logger LOGGER = LogManager.getLogger();
+    //public static final Logger LOGGER = LogManager.getLogger("lestora");
 
     public static void init() {
         SQLiteManager.withConn(conn -> {
@@ -18,8 +18,8 @@ public class PlayerRepo {
                     + ")";
             conn.createStatement().execute(sql);
             } catch (SQLException e) {
-                LOGGER.info("LestoraDB error: " + e.getMessage());
-                e.printStackTrace();
+                //LOGGER.info("LestoraDB error: " + e.getMessage());
+                //e.printStackTrace();
             }
         });
     }
@@ -32,7 +32,7 @@ public class PlayerRepo {
                 ps.setInt(2, level);
                 ps.executeUpdate();
             } catch (SQLException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
             }
         });
     }
@@ -48,7 +48,7 @@ public class PlayerRepo {
                     }
                 }
             } catch (SQLException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
             }
             setSwimLevel(uuid, 0);
             return 0;

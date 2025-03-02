@@ -1,4 +1,4 @@
-package com.lestora;
+package com.lestora.highlight;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -11,19 +11,19 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public class HighlightConfig {
+public class HighlightSphere {
     private double centerX;
     private double centerY;
     private double centerZ;
     private double highlightRadius;
     private final List<BlockPos> highlightedPositions = new CopyOnWriteArrayList<>();
 
-    private static final ConcurrentHashMap<UUID, HighlightConfig> userConfigs = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<UUID, HighlightSphere> userConfigs = new ConcurrentHashMap<>();
 
     public static void setHighlightCenterAndRadius(UUID userId, double x, double y, double z, double radius, Level level) {
         userConfigs.compute(userId, (id, existingConfig) -> {
             if (existingConfig == null) {
-                existingConfig = new HighlightConfig();
+                existingConfig = new HighlightSphere();
             }
             existingConfig.centerX = x;
             existingConfig.centerY = y;
@@ -34,11 +34,11 @@ public class HighlightConfig {
         });
     }
 
-    public static HighlightConfig getUserHighlightConfig(UUID userId) {
+    public static HighlightSphere getUserHighlightConfig(UUID userId) {
         return userConfigs.get(userId);
     }
 
-    public double getHighlightRadius() { return highlightRadius; }
+    public Boolean hasHighlights() { return !highlightedPositions.isEmpty(); }
     public List<BlockPos> getHighlightedPositions() { return highlightedPositions; }
 
     private int getBlockCoord(double coord) {

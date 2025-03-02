@@ -18,7 +18,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public final class TestLightConfig {
-    public static final Logger LOGGER = LogManager.getLogger("lestora");
+    //public static final Logger LOGGER = LogManager.getLogger("lestora");
 
     public record EntityPair(Entity first, ResourceLocation second) {}
     public record PosAndName(BlockPos position, ResourceLocation resource) {}

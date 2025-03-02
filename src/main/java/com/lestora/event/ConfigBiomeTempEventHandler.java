@@ -1,6 +1,6 @@
 package com.lestora.event;
 
-import com.lestora.ConfigBiomeTemp;
+import com.lestora.temperature.ConfigBiomeTemp;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.biome.Biome;

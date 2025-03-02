@@ -1,6 +1,6 @@
 package com.lestora.event;
 
-import com.lestora.ConfigLighting;
+import com.lestora.dynamiclighting.ConfigLighting;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;

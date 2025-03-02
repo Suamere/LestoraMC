@@ -1,4 +1,4 @@
-package com.lestora.data;
+package com.lestora.AI;
 
 public enum VillagerInteractionType {
     UserAction,

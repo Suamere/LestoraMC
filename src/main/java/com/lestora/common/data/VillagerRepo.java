@@ -1,4 +1,7 @@
-package com.lestora.data;
+package com.lestora.common.data;
+
+import com.lestora.AI.VillagerInteraction;
+import com.lestora.AI.VillagerInteractionType;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -32,7 +35,7 @@ public class VillagerRepo {
                         + ")";
                 conn.createStatement().execute(sqlVillagerInteraction);
             } catch (SQLException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
             }
         });
     }
@@ -46,7 +49,7 @@ public class VillagerRepo {
                 ps.setString(3, personality);
                 ps.executeUpdate();
             } catch (SQLException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
             }
         });
     }
@@ -64,7 +67,7 @@ public class VillagerRepo {
                     }
                 }
             } catch (SQLException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
             }
             return null;
         });
@@ -80,7 +83,7 @@ public class VillagerRepo {
                     names.add(rs.getString("name"));
                 }
             } catch (SQLException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
             }
             return names;
         });
@@ -100,7 +103,7 @@ public class VillagerRepo {
                 }
                 ps.executeBatch();
             } catch (SQLException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
             }
         });
     }
@@ -122,7 +125,7 @@ public class VillagerRepo {
                     }
                 }
             } catch (SQLException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
             }
             return list;
         });
@@ -135,7 +138,7 @@ public class VillagerRepo {
                 ps.setString(1, villagerUUID.toString());
                 ps.executeUpdate();
             } catch (SQLException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
             }
             return null;
         });

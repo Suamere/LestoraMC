@@ -1,15 +1,16 @@
 package com.lestora;
 
-import com.lestora.data.SQLiteManager;
+import com.lestora.AI.AIRequestThread;
+import com.lestora.common.data.SQLiteManager;
+import com.lestora.dynamiclighting.ConfigLighting;
+import com.lestora.temperature.ConfigBiomeTemp;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 @Mod("lestora")
 public class LestoraMod {
-    private static final Logger LOGGER = LogManager.getLogger();
+    //public static final Logger LOGGER = LogManager.getLogger("lestora");
 
     public LestoraMod(FMLJavaModLoadingContext constructContext) {
         SQLiteManager.init();

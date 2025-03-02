@@ -1,7 +1,10 @@
-package com.lestora.data;
+package com.lestora.common.models;
 
 import com.google.gson.JsonObject;
-import com.lestora.AIRequestThread;
+import com.lestora.AI.AIRequestThread;
+import com.lestora.common.data.VillagerRepo;
+import com.lestora.AI.VillagerInteraction;
+import com.lestora.AI.VillagerInteractionType;
 import net.minecraft.world.entity.npc.Villager;
 
 import java.util.*;
@@ -33,7 +36,7 @@ public class LestoraVillager {
 
     public static LestoraVillager get(Villager villager) {
         return villagers.computeIfAbsent(villager.getUUID(), key -> {
-            System.out.println("New Villager in memory: " + key);
+            //System.out.println("New Villager in memory: " + key);
             var lestoraVillager = new LestoraVillager(villager);
             lestoraVillager.calcNew();
             return lestoraVillager;
@@ -43,7 +46,7 @@ public class LestoraVillager {
     private void calcNew() {
         var dbVillager = VillagerRepo.getVillager(this.uuid);
         if (dbVillager == null) {
-            System.out.println("Villager not in DB: " + this.uuid + " -- queue Name and Personality.");
+            //System.out.println("Villager not in DB: " + this.uuid + " -- queue Name and Personality.");
             this.newVillagerMsgID = UUID.randomUUID();
             AIRequestThread.getNewVillager(this.newVillagerMsgID, VillagerRepo.getAllVillagerNames());
             newVillagers.put(this.newVillagerMsgID, this);
@@ -76,7 +79,7 @@ public class LestoraVillager {
                     lestoraVillager.newVillagerMsgID = null;
                     lestoraVillager.name = aiResponse.get("name").getAsString();
                     lestoraVillager.personality = aiResponse.get("personality").getAsString();
-                    System.out.print("New Villager AI Response (" + lestoraVillager.uuid + "): " + lestoraVillager.name + " : " + lestoraVillager.personality);
+                    //System.out.print("New Villager AI Response (" + lestoraVillager.uuid + "): " + lestoraVillager.name + " : " + lestoraVillager.personality);
                     VillagerRepo.addVillager(lestoraVillager.uuid, lestoraVillager.name, lestoraVillager.personality);
                     iterator.remove();
                 }

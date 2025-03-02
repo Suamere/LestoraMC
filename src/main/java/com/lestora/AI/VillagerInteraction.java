@@ -1,4 +1,4 @@
-package com.lestora.data;
+package com.lestora.AI;
 
 public class VillagerInteraction {
     private final VillagerInteractionType type;

@@ -1,11 +1,9 @@
-package com.lestora;
+package com.lestora.AI;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.lestora.data.LestoraVillager;
-import com.lestora.data.VillagerInteraction;
-import com.lestora.data.VillagerInteractionType;
-import com.lestora.data.VillagerRepo;
+import com.lestora.common.models.LestoraVillager;
+import com.lestora.common.data.VillagerRepo;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -55,9 +53,9 @@ public class AIRequestThread {
                 + "User requests are formatted as a narrative. That means if it the user states that Jonathan says, \"Hello\", then you do not know his name is Jonathan yet.  But when the user states that Jonathan says \"My name is Jonathan\", then you do know their name from then on. Keep your responses around 10 words."
                 + "Your current personality can be summed up as all of the following: " + lv.getPersonality() + ".";
         var rawChatResponse = sendAI(systemContent, userContent, fromPlayerUUID, lv.getUUID());
-        System.out.println("AI System Input: " + systemContent);
-        System.out.println("AI User Input: " + userContent);
-        System.out.println("Raw AI Chat Response: " + rawChatResponse);
+        //System.out.println("AI System Input: " + systemContent);
+        //System.out.println("AI User Input: " + userContent);
+        //System.out.println("Raw AI Chat Response: " + rawChatResponse);
         response.addProperty("response", rawChatResponse);
         return response;
     }
@@ -119,7 +117,7 @@ public class AIRequestThread {
                 return jsonResponse.getAsJsonObject("message").get("content").getAsString();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             return null;
         }
     }
@@ -176,7 +174,7 @@ public class AIRequestThread {
             try {
                 msgResponses.put(entry.getKey(), tryGetNewVillager(entry.getValue()));
             } catch (Exception e) {
-                e.printStackTrace();
+                //e.printStackTrace();
             }
             iterator.remove();
         }
@@ -188,7 +186,7 @@ public class AIRequestThread {
             try {
                 msgResponses.put(entry.getKey(), tryChatWithVillager(entry.getValue().getVillager(), entry.getValue().getPlayerUUID(), entry.getValue().getUserContent()));
             } catch (Exception e) {
-                e.printStackTrace();
+                //e.printStackTrace();
             }
             iterator.remove();
         }

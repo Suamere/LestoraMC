@@ -1,4 +1,4 @@
-package com.lestora.data;
+package com.lestora.common.data;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -12,7 +12,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class SQLiteManager {
-    private static final Logger LOGGER = LogManager.getLogger();
+    //public static final Logger LOGGER = LogManager.getLogger("lestora");
     private static final String DB_URL = "jdbc:sqlite:" + System.getProperty("user.home") + "/.lestoraRPG/lestora.db";
     private static Connection connection;
 
@@ -33,11 +33,11 @@ public class SQLiteManager {
             VillagerRepo.init();
 
         } catch (SQLException e) {
-            LOGGER.info("LestoraDB error: " + e.getMessage());
-            e.printStackTrace();
+            //LOGGER.info("LestoraDB error: " + e.getMessage());
+            //e.printStackTrace();
         } catch (ClassNotFoundException e) {
-            LOGGER.info("LESTORA Error: Could not find class for org.sqlite.JDBC: " + e.getMessage());
-            e.printStackTrace();
+            //LOGGER.info("LESTORA Error: Could not find class for org.sqlite.JDBC: " + e.getMessage());
+            //e.printStackTrace();
         }
     }
 

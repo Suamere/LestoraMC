@@ -1,4 +1,4 @@
-package com.lestora;
+package com.lestora.dynamiclighting;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.common.ForgeConfigSpec;
@@ -35,10 +35,10 @@ public class ConfigLighting {
                     if (loc != null) {
                         map.put(loc, level);
                     } else {
-                        System.err.println("Invalid item id in config: " + itemId);
+                        //System.err.println("Invalid item id in config: " + itemId);
                     }
                 } catch (NumberFormatException e) {
-                    System.err.println("Invalid number in config for " + itemId + ": " + split[1]);
+                    //System.err.println("Invalid number in config for " + itemId + ": " + split[1]);
                 }
             }
         }

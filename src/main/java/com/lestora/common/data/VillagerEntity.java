@@ -1,4 +1,4 @@
-package com.lestora.data;
+package com.lestora.common.data;
 
 public class VillagerEntity {
     private final String name;

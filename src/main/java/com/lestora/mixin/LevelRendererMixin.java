@@ -1,6 +1,6 @@
 package com.lestora.mixin;
 
-import com.lestora.HighlightConfig;
+import com.lestora.highlight.HighlightSphere;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -36,8 +36,8 @@ public abstract class LevelRendererMixin {
 
         // If no highlight radius is set, do nothing.
         UUID userId = mc.player.getUUID();
-        HighlightConfig config = HighlightConfig.getUserHighlightConfig(userId);
-        if (config == null || config.getHighlightRadius() <= 0) return;
+        HighlightSphere config = HighlightSphere.getUserHighlightConfig(userId);
+        if (config == null || !config.hasHighlights()) return;
 
         // Get precomputed positions
         List<BlockPos> positions = config.getHighlightedPositions();

@@ -1,8 +1,8 @@
 package com.lestora.event;
 
-import com.lestora.HighlightConfig;
-import com.lestora.data.LestoraPlayer;
-import com.lestora.data.LestoraVillager;
+import com.lestora.highlight.HighlightSphere;
+import com.lestora.common.models.LestoraPlayer;
+import com.lestora.common.models.LestoraVillager;
 import com.lestora.util.TestLightConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -26,14 +26,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Mod.EventBusSubscriber
 public class EventSubscribor {
-    public static final Logger LOGGER = LogManager.getLogger("lestora");
+    //public static final Logger LOGGER = LogManager.getLogger("lestora");
 
     @SubscribeEvent
     public static void onBlockBreak(BlockEvent.BreakEvent event) {
         BlockPos brokenPos = event.getPos();
         UUID userId = Minecraft.getInstance().player.getUUID();
-        HighlightConfig config = HighlightConfig.getUserHighlightConfig(userId);
-        if (config == null || config.getHighlightRadius() <= 0) return;
+        HighlightSphere config = HighlightSphere.getUserHighlightConfig(userId);
+        if (config == null || !config.hasHighlights()) return;
 
         config.remove(brokenPos, Minecraft.getInstance().level);
     }
@@ -44,8 +44,8 @@ public class EventSubscribor {
         if (level == null) return;
         BlockPos placedPos = event.getPos();
         UUID userId = Minecraft.getInstance().player.getUUID();
-        HighlightConfig config = HighlightConfig.getUserHighlightConfig(userId);
-        if (config == null || config.getHighlightRadius() <= 0) return;
+        HighlightSphere config = HighlightSphere.getUserHighlightConfig(userId);
+        if (config == null || !config.hasHighlights()) return;
 
         config.add(placedPos, level);
     }

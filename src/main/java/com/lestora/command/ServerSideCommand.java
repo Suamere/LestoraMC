@@ -1,6 +1,6 @@
 package com.lestora.command;
 
-import com.lestora.data.LestoraPlayer;
+import com.lestora.common.models.LestoraPlayer;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.minecraft.commands.CommandSourceStack;

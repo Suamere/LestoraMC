@@ -1,10 +1,12 @@
-package com.lestora.data;
+package com.lestora.common.models;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.lestora.common.DebugOverlay;
+import com.lestora.common.data.PlayerRepo;
 import com.lestora.event.ConfigBiomeTempEventHandler;
 import com.lestora.util.EntityBlockInfo;
 import com.lestora.util.StandingBlockUtil;
@@ -20,7 +22,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageTypes;
-import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -30,13 +31,11 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.Collections;
 
 public class LestoraPlayer {
-    private static final Logger LOGGER = LogManager.getLogger();
+    //public static final Logger LOGGER = LogManager.getLogger("lestora");
 
     private Player mcPlayer;
     private UUID uuid;
@@ -55,6 +54,16 @@ public class LestoraPlayer {
     private final Map<BlockPos, BlockState> cachedBlockStates = new HashMap<>();
 
     private static final Map<UUID, LestoraPlayer> players = new HashMap<>();
+
+    static {
+        DebugOverlay.registerDebugLine("Wetness", lP -> lP.getWetness().toString());
+        DebugOverlay.registerDebugLine("Body Temp", lP -> String.valueOf(lP.getBodyTemp()));
+        DebugOverlay.registerDebugLine("Swim Level", lP -> String.valueOf(lP.getSwimLevel()));
+        DebugOverlay.registerDebugLine("Supporting Block", lP -> {
+            var supportPos = lP.getSupportingBlock();
+            return StandingBlockUtil.getSupportingBlockType(supportPos) + " " + supportPos.getSupportingPos();
+        });
+    }
 
     public static Map<UUID, LestoraPlayer> getPlayers() {
         return Collections.unmodifiableMap(players);
@@ -185,8 +194,9 @@ public class LestoraPlayer {
             freezeDmg = -1 * (60 - this.bodyTemp) / 2;
         }
 
-        if (this.bodyTemp > 110){
-            heatDmg = (this.bodyTemp - 110) / 2;
+        var heatStart = 110 + (this.wetness.ordinal() + 40);
+        if (this.bodyTemp > heatStart){
+            heatDmg = (this.bodyTemp - heatStart) / 2;
         }
 
         if (freezeDmg > 0){

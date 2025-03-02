@@ -1,17 +1,15 @@
 package com.lestora.event;
 
-import com.lestora.data.LestoraVillager;
-import net.minecraft.network.chat.Component;
+import com.lestora.common.models.LestoraVillager;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraftforge.event.ServerChatEvent;
-import net.minecraftforge.event.TickEvent.PlayerTickEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
-import com.lestora.data.LestoraPlayer;
-import com.lestora.data.VillagerRepo;
+import com.lestora.common.models.LestoraPlayer;
+import com.lestora.common.data.VillagerRepo;
 
 import java.util.UUID;
 
@@ -47,7 +45,7 @@ public class AIEvent {
             return;
         }
         UUID villagerUUID = villager.getUUID();
-        System.out.println("Villager died: " + villagerUUID + ". Removing from database.");
+        //System.out.println("Villager died: " + villagerUUID + ". Removing from database.");
         VillagerRepo.deleteVillager(villagerUUID);
     }
 

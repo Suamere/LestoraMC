@@ -1,4 +1,4 @@
-package com.lestora;
+package com.lestora.temperature;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.common.ForgeConfigSpec;
@@ -94,17 +94,17 @@ public class ConfigBiomeTemp {
                 try {
                     float temp = Float.parseFloat(split[1].trim());
                     if (temp < -1.0f || temp > 3.0f) {
-                        System.err.println("Temperature out of range for biome " + biomeId + ": " + temp);
+                        //System.err.println("Temperature out of range for biome " + biomeId + ": " + temp);
                         continue;
                     }
                     ResourceLocation loc = ResourceLocation.tryParse(biomeId);
                     if (loc != null) {
                         map.put(loc, temp);
                     } else {
-                        System.err.println("Invalid biome id in config: " + biomeId);
+                        //System.err.println("Invalid biome id in config: " + biomeId);
                     }
                 } catch (NumberFormatException e) {
-                    System.err.println("Invalid temperature number in config for " + biomeId + ": " + split[1]);
+                    //System.err.println("Invalid temperature number in config for " + biomeId + ": " + split[1]);
                 }
             }
         }
