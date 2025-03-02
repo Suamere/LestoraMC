@@ -1,7 +1,7 @@
-package com.lestora.mixin;
+package com.lestora.dynamiclighting.mixin;
 
 import com.lestora.event.ConfigEventHandler;
-import com.lestora.util.TestLightConfig;
+import com.lestora.dynamiclighting.DynamicLighting;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.lighting.BlockLightEngine;
 import org.spongepowered.asm.mixin.Mixin;
@@ -24,8 +24,8 @@ public abstract class LightTextureMixin {
             )
     )
     private int overrideGetEmission(BlockLightEngine instance, long pos, BlockState state) {
-        if (TestLightConfig.getEnabled()) {
-            for (var currentPos : TestLightConfig.getCurrentPositions()) {
+        if (DynamicLighting.getEnabled()) {
+            for (var currentPos : DynamicLighting.getCurrentPositions()) {
                 if (pos == currentPos.position().asLong()) {
                     var lightLevel = ConfigEventHandler.getLightLevel(currentPos.resource());
                     if (lightLevel != null) { return lightLevel; }

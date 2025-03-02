@@ -1,4 +1,4 @@
-package com.lestora.util;
+package com.lestora.dynamiclighting;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientChunkCache;
@@ -6,8 +6,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.lighting.LevelLightEngine;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -17,9 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public final class TestLightConfig {
-    //public static final Logger LOGGER = LogManager.getLogger("lestora");
-
+public final class DynamicLighting {
     public record EntityPair(Entity first, ResourceLocation second) {}
     public record PosAndName(BlockPos position, ResourceLocation resource) {}
 
@@ -31,7 +27,6 @@ public final class TestLightConfig {
     public static Collection<PosAndName> getCurrentPositions() {
         lock.lock();
         try {
-            // Instead, return the collection of two values... the BlockPos and the ItemName
             return new ArrayList<>(currentPositions.values());
         } finally {
             lock.unlock();

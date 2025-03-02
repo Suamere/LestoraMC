@@ -1,5 +1,6 @@
-package com.lestora.util;
+package com.lestora.wetness;
 
+import com.lestora.common.models.EntityBlockInfo;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;

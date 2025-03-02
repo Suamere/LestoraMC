@@ -1,4 +1,4 @@
-package com.lestora.util;
+package com.lestora.wetness;
 
 public enum Wetness {
     DRY,

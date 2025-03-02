@@ -1,4 +1,4 @@
-package com.lestora.util;
+package com.lestora.common.models;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -7,24 +7,17 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
 public class EntityBlockInfo {
-    // BlockStates
-    private final BlockState _supportingBlock;
-    private final BlockState _belowSupport;
-    private final BlockState _feetBlock;
-    private final BlockState _headBlock;
-
-    // Coordinates for the respective blocks.
     private final Coordinates _supportingPos;
+    public Coordinates getSupportingPos() { return _supportingPos; }
 
-    private EntityBlockInfo(BlockState supportingBlock, BlockState belowSupport,
-                           BlockState feetBlock, BlockState headBlock,
-                           Coordinates supportingPos) {
-        this._supportingBlock = supportingBlock;
-        this._belowSupport = belowSupport;
-        this._feetBlock = feetBlock;
-        this._headBlock = headBlock;
-        this._supportingPos = supportingPos;
-    }
+    private final BlockState _headBlock;
+    public BlockState getHeadBlock() { return _headBlock; }
+    private final BlockState _feetBlock;
+    public BlockState getFeetBlock() { return _feetBlock; }
+    private final BlockState _supportingBlock;
+    public BlockState getSupportingBlock() { return _supportingBlock; }
+    private final BlockState _belowSupport;
+    public BlockState getBelowSupport() { return _belowSupport; }
 
     public static EntityBlockInfo fromSupport(BlockState supportState, BlockPos supportPos, boolean lastBlockSolid) {
         Level world = Minecraft.getInstance().level;
@@ -41,7 +34,6 @@ public class EntityBlockInfo {
             var belowBlk = sptBlk.below();
             var belowState = world.getBlockState(belowBlk);
             if (belowState.getBlock() == Blocks.WATER && !lastBlockSolid) {
-                var headBlk = sptBlk;
                 var headState = sptState;
                 sptBlk = belowBlk;
                 sptState = belowState;
@@ -65,23 +57,13 @@ public class EntityBlockInfo {
         return new EntityBlockInfo(sptState, belowState, feetState, headState, Coordinates.fromPos(sptBlk));
     }
 
-    public BlockState getSupportingBlock() {
-        return _supportingBlock;
-    }
-
-    public BlockState getBelowSupport() {
-        return _belowSupport;
-    }
-
-    public BlockState getFeetBlock() {
-        return _feetBlock;
-    }
-
-    public BlockState getHeadBlock() {
-        return _headBlock;
-    }
-
-    public Coordinates getSupportingPos() {
-        return _supportingPos;
+    private EntityBlockInfo(BlockState supportingBlock, BlockState belowSupport,
+                            BlockState feetBlock, BlockState headBlock,
+                            Coordinates supportingPos) {
+        this._supportingBlock = supportingBlock;
+        this._belowSupport = belowSupport;
+        this._feetBlock = feetBlock;
+        this._headBlock = headBlock;
+        this._supportingPos = supportingPos;
     }
 }

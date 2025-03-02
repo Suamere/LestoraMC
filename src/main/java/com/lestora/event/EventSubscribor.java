@@ -3,7 +3,7 @@ package com.lestora.event;
 import com.lestora.highlight.HighlightSphere;
 import com.lestora.common.models.LestoraPlayer;
 import com.lestora.common.models.LestoraVillager;
-import com.lestora.util.TestLightConfig;
+import com.lestora.dynamiclighting.DynamicLighting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
@@ -17,8 +17,6 @@ import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.Map;
 import java.util.UUID;
@@ -60,7 +58,7 @@ public class EventSubscribor {
         LestoraVillager.processNewVillagers();
         LestoraVillager.processChatMessages();
 
-        if (TestLightConfig.getEnabled()) {
+        if (DynamicLighting.getEnabled()) {
             for (Player player : level.players()) {
                 var mainStack = player.getMainHandItem();
                 var offStack = player.getOffhandItem();
@@ -82,14 +80,14 @@ public class EventSubscribor {
                 if (changed) {
                     if (resourceLocation != null) {
                         previousTorchState.put(uuid, resourceLocation);
-                        TestLightConfig.tryAddEntity(player, resourceLocation);
+                        DynamicLighting.tryAddEntity(player, resourceLocation);
                     } else {
                         previousTorchState.remove(uuid);
-                        TestLightConfig.tryRemoveEntity(player);
+                        DynamicLighting.tryRemoveEntity(player);
                     }
                 }
             }
-            TestLightConfig.tryUpdateEntityPositions();
+            DynamicLighting.tryUpdateEntityPositions();
         }
 
         var clientPlayer = Minecraft.getInstance().player;
@@ -105,7 +103,7 @@ public class EventSubscribor {
                 var resourceLocation = ForgeRegistries.ITEMS.getKey(itemEntity.getItem().getItem());
                 var lightLevel = ConfigEventHandler.getLightLevel(resourceLocation);
                 if (lightLevel != null) {
-                    TestLightConfig.tryAddEntity(itemEntity, resourceLocation);
+                    DynamicLighting.tryAddEntity(itemEntity, resourceLocation);
                 }
             });
         }
@@ -113,7 +111,7 @@ public class EventSubscribor {
 
     @SubscribeEvent
     public static void onEntityLeaveLevel(EntityLeaveLevelEvent event) {
-        TestLightConfig.tryRemoveEntity(event.getEntity());
+        DynamicLighting.tryRemoveEntity(event.getEntity());
     }
 
 //    @SubscribeEvent

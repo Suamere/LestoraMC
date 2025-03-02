@@ -1,12 +1,10 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "com.lestora.mixin",
+  "package": "com.lestora.dynamiclighting.mixin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "mixins.lestora.refmap.json",
   "mixins": [
-    "LevelRendererMixin",
-    "ClientLevelMixin",
     "LightTextureMixin"
   ],
   "client": [],

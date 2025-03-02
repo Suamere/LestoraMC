@@ -1,7 +1,7 @@
 modLoader="javafml"
 loaderVersion="${loader_version_range}"
 license="${mod_license}"
-mixinsConfig="mixins.lestora.json"
+mixinsConfig="mixins.lestora.dynamiclighting.json, mixins.lestora.highlight.json"
 
 [[mods]] #mandatory
 modId="${mod_id}" #mandatory

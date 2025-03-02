@@ -1,4 +1,4 @@
-package com.lestora.util;
+package com.lestora.common.models;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;

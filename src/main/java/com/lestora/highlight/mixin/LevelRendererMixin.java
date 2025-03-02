@@ -1,4 +1,4 @@
-package com.lestora.mixin;
+package com.lestora.highlight.mixin;
 
 import com.lestora.highlight.HighlightSphere;
 import com.mojang.blaze3d.vertex.PoseStack;

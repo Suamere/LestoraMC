@@ -1,7 +1,6 @@
 package com.lestora.dynamiclighting;
 
 import com.lestora.common.DebugOverlay;
-import com.lestora.util.TestLightConfig;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.client.Minecraft;
@@ -36,7 +35,7 @@ public class CommandRegistrationHandler {
                 .then(Commands.argument("value", BoolArgumentType.bool())
                         .executes(ctx -> {
                             boolean value = BoolArgumentType.getBool(ctx, "value");
-                            TestLightConfig.setEnabled(value);
+                            DynamicLighting.setEnabled(value);
                             return 1;
                         })
                 )
