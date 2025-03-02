@@ -5,10 +5,12 @@ LestoraRPG will eventually add a bunch of small features that make Minecraft mor
 **Swimming complexity:  If you get in over your head, metaphorically speaking, you're going to feel quite the trauma (mentally and physically).  Until you learn to swim.**
 **Body Temp: If you're too hot or cold, you will take damage.  To see your temperature, for now, run the showDebug command.  Definitely don't hold a bucket full of lava, for now.**
 
-Current Development 1: Lighting Help.  Using my current highlighting capabilities, if you shift and there are torches nearby, the ground should highlight light orange on the edge (0 ground light), and light blue at the furthest location you should place a torch to ensure 1 light between two torches?
-Current Development 2: Learning to swim.  Time in water, Time in game, Particular potions (water breathing), turtle helmet, etc.  As vanilla as possible.  Until then... use a boat!
+Current Development 1: Going to be splitting these features out into individual mods, starting with the Dynamic Lighting.
+Current Development 2: Lighting Help.  Using my current highlighting capabilities, if you shift and there are torches nearby, the ground should highlight light orange on the edge (0 ground light), and light blue at the furthest location you should place a torch to ensure 1 light between two torches?
+Current Development 3: Learning to swim.  Time in water, Time in game, Particular potions (water breathing), turtle helmet, etc.  As vanilla as possible.  Until then... use a boat!
 
 ## Features
+- **Villager AI:** If you're running Ollama Mistral, villagers will now chat with you!  Right click one to focus them, and then just chat away! (Wait a few seconds for responses depending on your AI/VRAM setup).  Villagers will now freeze during conversation or focus, or if 10 seconds pass with no other interaction.
 - **Configuration:** Added lestora-common.toml, currently for configuring dynamic lighting.
 - **Dynamic Lighting:** Added some dynamic lighting, because apparently there's no good Forge mod that works on 1.21+.
 - **Client-Side Only (Currently):** Works locally without affecting multiplayer sessions.
