@@ -57,6 +57,7 @@ public class EventSubscribor {
 
         LestoraVillager.processNewVillagers();
         LestoraVillager.processChatMessages();
+        LestoraVillager.giveFreedom();
 
         if (DynamicLighting.getEnabled()) {
             for (Player player : level.players()) {

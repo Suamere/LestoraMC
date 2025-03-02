@@ -2,6 +2,9 @@ package com.lestora.event;
 
 import com.lestora.common.models.LestoraVillager;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraftforge.event.ServerChatEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
@@ -19,6 +22,16 @@ public class AIEvent {
     // Right-click (interact) with entity event
     @SubscribeEvent
     public static void onEntityInteract(PlayerInteractEvent.EntityInteract event) {
+        ProcessVillagerChat(event);
+    }
+
+    private static void ProcessVillagerChat(PlayerInteractEvent.EntityInteract event) {
+        if (event.getHand() != InteractionHand.MAIN_HAND) {
+            return;
+        }
+        if (event.getLevel().isClientSide()) {
+            return;
+        }
         if (!(event.getTarget() instanceof Villager villager)) {
             return;
         }
@@ -26,6 +39,7 @@ public class AIEvent {
 
         var lestoraPlayer = LestoraPlayer.get(event.getEntity());
         var lestoraVillager = LestoraVillager.get(villager);
+        System.out.println("Event?");
         lestoraPlayer.TryFocusOnVillager(lestoraVillager);
     }
 

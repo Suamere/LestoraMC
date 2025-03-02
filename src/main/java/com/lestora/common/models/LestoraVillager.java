@@ -5,13 +5,15 @@ import com.lestora.AI.AIRequestThread;
 import com.lestora.common.data.VillagerRepo;
 import com.lestora.AI.VillagerInteraction;
 import com.lestora.AI.VillagerInteractionType;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.npc.Villager;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class LestoraVillager {
-    private final Villager mcVillager;
+    private Villager clientVillager;
+    private Villager serverVillager;
     public UUID uuid;
     public String name;
     private String personality;
@@ -30,30 +32,51 @@ public class LestoraVillager {
     }
 
     private LestoraVillager(Villager villager) {
-        this.mcVillager = villager;
         this.uuid = villager.getUUID();
     }
 
     public static LestoraVillager get(Villager villager) {
-        return villagers.computeIfAbsent(villager.getUUID(), key -> {
-            //System.out.println("New Villager in memory: " + key);
+        var lVillager = villagers.computeIfAbsent(villager.getUUID(), key -> {
             var lestoraVillager = new LestoraVillager(villager);
             lestoraVillager.calcNew();
             return lestoraVillager;
         });
+        if (villager.level().isClientSide()) {
+            lVillager.setClientVillager(villager);
+        }
+        else {
+            lVillager.setServerVillager(villager);
+        }
+        return lVillager;
     }
 
+    private void setClientVillager(Villager villager) {
+        this.clientVillager = villager;
+    }
+
+    private void setServerVillager(Villager villager) {
+        this.serverVillager = villager;
+    }
+
+    private Boolean aiStarted = false;
+    public Boolean getAiStarted() { return aiStarted;}
     private void calcNew() {
         var dbVillager = VillagerRepo.getVillager(this.uuid);
         if (dbVillager == null) {
-            //System.out.println("Villager not in DB: " + this.uuid + " -- queue Name and Personality.");
             this.newVillagerMsgID = UUID.randomUUID();
-            AIRequestThread.getNewVillager(this.newVillagerMsgID, VillagerRepo.getAllVillagerNames());
             newVillagers.put(this.newVillagerMsgID, this);
+            tryGetVillagerAI();
         }
         else {
             this.name = dbVillager.getName();
             this.personality = dbVillager.getPersonality();
+        }
+    }
+
+    public void tryGetVillagerAI() {
+        if (AIRequestThread.isAiAvailable()) {
+            AIRequestThread.getNewVillager(this.newVillagerMsgID, VillagerRepo.getAllVillagerNames());
+            aiStarted = true;
         }
     }
 
@@ -73,7 +96,10 @@ public class LestoraVillager {
         while (iterator.hasNext()) {
             var entry = iterator.next();
             var lestoraVillager = entry.getValue();
-            if (lestoraVillager.personality == null && lestoraVillager.newVillagerMsgID != null) {
+            if (!lestoraVillager.getAiStarted()){
+                lestoraVillager.tryGetVillagerAI();
+            }
+            else if (lestoraVillager.personality == null && lestoraVillager.newVillagerMsgID != null) {
                 var aiResponse = AIRequestThread.getMessageResponse(lestoraVillager.newVillagerMsgID);
                 if (aiResponse != null) {
                     lestoraVillager.newVillagerMsgID = null;
@@ -87,6 +113,8 @@ public class LestoraVillager {
         }
     }
 
+    private long chatTimer = 0;
+    private final Set<UUID> chats = ConcurrentHashMap.newKeySet();
     public static void processChatMessages() {
         var iterator = chatMessages.entrySet().iterator();
         while (iterator.hasNext()) {
@@ -98,6 +126,7 @@ public class LestoraVillager {
             if (aiResponse != null) {
                 chatMsg.getVillager().processChatMessage(aiResponse, chatMsg.getPlayer(), chatMsg.getUserContent());
                 iterator.remove();
+                chatMsg.getVillager().chats.remove(msgID);
             }
         }
     }
@@ -105,16 +134,33 @@ public class LestoraVillager {
     public void tell(LestoraPlayer lestoraPlayer, String userContent) {
         var newFocusMsgID = UUID.randomUUID();
         var chatMsg = new ChatMessage(this, lestoraPlayer, userContent);
+        chats.add(newFocusMsgID);
+        // Reset the timer each time a chat is added.
+        this.chatTimer = System.currentTimeMillis() + 10_000;
         chatMessages.put(newFocusMsgID, chatMsg);
         AIRequestThread.chatWithVillager(newFocusMsgID, this, lestoraPlayer.getUuid(), userContent);
+    }
+
+    public static void giveFreedom() {
+        for (LestoraVillager villager : villagers.values()) {
+            if (!villager.hasAI && villager.chats.isEmpty() && System.currentTimeMillis() >= villager.chatTimer) {
+                villager.setNoAi(false);
+            }
+        }
     }
 
     public UUID getUUID() {
         return this.uuid;
     }
 
+    private Boolean hasAI = false;
     public void setNoAi(boolean b) {
-        this.mcVillager.setNoAi(b);
+        if (this.serverVillager != null) {
+            System.out.println("WRECK THIS FOOL? " + b);
+            hasAI = !b;
+            if (b) this.chatTimer = System.currentTimeMillis() + 10_000;
+            this.serverVillager.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(b ? 0.0 : 0.5);
+        }
     }
 
     public static class ChatMessage {

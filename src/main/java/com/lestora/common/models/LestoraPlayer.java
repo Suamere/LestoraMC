@@ -89,12 +89,10 @@ public class LestoraPlayer {
             return false;
         }
 
-        if (focusedVillager != null && focusedVillager.getUUID().equals(villager.getUUID())) {
-            focusedVillager = villager;
-            return false;
+        if (focusedVillager != null && !focusedVillager.getUUID().equals(villager.getUUID())) {
+            UnfocusCurrentVillager();
         }
 
-        UnfocusCurrentVillager();
         focusedVillager = villager;
         villager.setNoAi(true);
         return true;

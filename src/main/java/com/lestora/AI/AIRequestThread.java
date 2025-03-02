@@ -10,6 +10,9 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+import java.net.Socket;
+import java.net.InetSocketAddress;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -17,6 +20,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class AIRequestThread {
+    private static boolean aiAvailable = false;
+    public static boolean isAiAvailable() { return aiAvailable; }
     private static final OkHttpClient client = new OkHttpClient();
     private static final MediaType JSON_MEDIA = MediaType.get("application/json; charset=utf-8");
     private static final Gson gson = new Gson();
@@ -159,6 +164,17 @@ public class AIRequestThread {
 
     private static final ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
     public static void startBackgroundProcessing() {
+        // Check if the Mistral server is available on localhost:11434 with a 2-second timeout.
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress("localhost", 11434), 2000);
+        } catch (IOException e) {
+            // Mistral server is not available; fail gently by not scheduling the tasks.
+            System.err.println("Mistral server not available. AI processing will not start.");
+            return;
+        }
+
+        aiAvailable = true;
+
         executor.scheduleAtFixedRate(() -> {
             iterateNewVillagers();
             iterateVillagerChats();
