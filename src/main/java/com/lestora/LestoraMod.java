@@ -13,6 +13,7 @@ public class LestoraMod {
     //public static final Logger LOGGER = LogManager.getLogger("lestora");
 
     public LestoraMod(FMLJavaModLoadingContext constructContext) {
+        System.err.println("Mistral WUT!?");
         SQLiteManager.init();
 //        LoggerContext context = (LoggerContext) LogManager.getContext(false);
 //        Configuration config = context.getConfiguration();

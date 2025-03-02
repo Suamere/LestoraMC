@@ -10,6 +10,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+import java.net.InetAddress;
 import java.net.Socket;
 import java.net.InetSocketAddress;
 import java.io.IOException;
@@ -46,21 +47,23 @@ public class AIRequestThread {
         String personalitySysContent = "You are a medieval person named " + suggestion + ". You speak in plain language, not medieval dialect. Stay in character at all times, and use your name as a foundation for how you answer questions.";
         String personalityUserContent = "Describe your personality. Things you like and dislike, your general disposition, and more. Be creative, as this is useful for all future discussion.  But do not include recognizable places like Camelot, or random names of fellow people.  Any nouns you use should be regarding things like pets or hobbies.";
         response.addProperty("personality", sendAI(personalitySysContent, personalityUserContent, null, null));
+        //System.out.println("Got name and personality");
         return response;
     }
 
     public static void chatWithVillager(UUID msgID, LestoraVillager lv, UUID fromPlayerUUID, String userContent) { villagerChat.put(msgID, new ChatWithVillager(lv, userContent, fromPlayerUUID)); }
     private static JsonObject tryChatWithVillager(LestoraVillager lv, UUID fromPlayerUUID, String userContent) {
         JsonObject response = new JsonObject();
-        String systemContent = "You are a medieval person named " + lv.name + ". Do not talk with a medieval dialect or accent. "
-                + "Any user request that you get, simply answer in first person. "
+        String systemContent = "You are not a friendly chat bot.  You are a medieval person named " + lv.name + ". Do not talk with a medieval dialect or accent. "
+                + "Any user request that you get, simply answer in first person, in character. "
+                + "Your interactions with the user should not immediately be to help, but should change based on the history of talking with them. "
                 + "Assume you know nothing in general about the world unless it's in your chat history.  So if you're asked \"Do you know Jessica\", and there is nothing in your chat history to suggest you do, then you don't. "
                 + "User requests are formatted as a narrative. That means if it the user states that Jonathan says, \"Hello\", then you do not know his name is Jonathan yet.  But when the user states that Jonathan says \"My name is Jonathan\", then you do know their name from then on. Keep your responses around 10 words."
                 + "Your current personality can be summed up as all of the following: " + lv.getPersonality() + ".";
         var rawChatResponse = sendAI(systemContent, userContent, fromPlayerUUID, lv.getUUID());
-        //System.out.println("AI System Input: " + systemContent);
-        //System.out.println("AI User Input: " + userContent);
-        //System.out.println("Raw AI Chat Response: " + rawChatResponse);
+//        System.out.println("AI System Input: " + systemContent);
+//        System.out.println("AI User Input: " + userContent);
+//        System.out.println("Raw AI Chat Response: " + rawChatResponse);
         response.addProperty("response", rawChatResponse);
         return response;
     }
@@ -164,21 +167,30 @@ public class AIRequestThread {
 
     private static final ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
     public static void startBackgroundProcessing() {
-        // Check if the Mistral server is available on localhost:11434 with a 2-second timeout.
-        try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress("localhost", 11434), 2000);
-        } catch (IOException e) {
-            // Mistral server is not available; fail gently by not scheduling the tasks.
-            System.err.println("Mistral server not available. AI processing will not start.");
-            return;
-        }
+        ScheduledExecutorService checkScheduler = Executors.newSingleThreadScheduledExecutor();
 
-        aiAvailable = true;
+        // Schedule a repeating check every 30 seconds.
+        checkScheduler.scheduleWithFixedDelay(() -> {
+            if (!mistralAvailable()){
+                System.err.println("Mistral server not detected. AI chat with villagers will not work.");
+            } else {
+                aiAvailable = true;
+                System.err.println("Lestora: !!!Mistral server available!!!  (Not an error, just red for visibility)");
 
-        executor.scheduleAtFixedRate(() -> {
-            iterateNewVillagers();
-            iterateVillagerChats();
-        }, 0, 5, TimeUnit.SECONDS);
+                // Schedule the actual processing tasks every 5 seconds.
+                executor.scheduleAtFixedRate(() -> {
+                    iterateNewVillagers();
+                    iterateVillagerChats();
+                }, 0, 5, TimeUnit.SECONDS);
+
+                // Once successful, stop further checking.
+                checkScheduler.shutdown();
+            }
+        }, 0, 30, TimeUnit.SECONDS);
+    }
+
+    private static boolean mistralAvailable() {
+        return (sendAI("Just say hello to me.", "Hello, friend.", null, null) != null);
     }
 
     private static final Map<UUID, List<String>> newVillager = new ConcurrentHashMap<>();
