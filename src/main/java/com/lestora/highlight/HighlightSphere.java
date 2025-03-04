@@ -57,6 +57,31 @@ public class HighlightSphere {
         return distSqr <= highlightRadius * highlightRadius;
     }
 
+    private void updateHighlightedPositions(Level level) {
+        highlightedPositions.clear();
+        int centerBlockX = getBlockCoord(centerX);
+        int centerBlockY = getBlockCoord(centerY);
+        int centerBlockZ = getBlockCoord(centerZ);
+        int intRadius = (int) Math.ceil(highlightRadius);
+        double radiusSq = highlightRadius * highlightRadius;
+
+        for (int dx = -intRadius; dx <= intRadius; dx++) {
+            double dxSq = dx * dx;
+            for (int dy = -intRadius; dy <= intRadius; dy++) {
+                double dySq = dy * dy;
+                double dxySq = dxSq + dySq;
+                if (dxySq > radiusSq) continue;
+                int maxDz = (int) Math.floor(Math.sqrt(radiusSq - dxySq));
+                for (int dz = -maxDz; dz <= maxDz; dz++) {
+                    BlockPos pos = new BlockPos(centerBlockX + dx, centerBlockY + dy, centerBlockZ + dz);
+                    if (isBlockExposed(pos, level) && !highlightedPositions.contains(pos)) {
+                        highlightedPositions.add(pos);
+                    }
+                }
+            }
+        }
+    }
+
     private boolean isBlockExposed(BlockPos pos, Level level) {
         BlockState state = level.getBlockState(pos);
         if (!state.canOcclude()) return false;
@@ -70,43 +95,17 @@ public class HighlightSphere {
         return false;
     }
 
-    private void updateHighlightedPositions(Level level) {
-        highlightedPositions.clear();
-        int centerBlockX = getBlockCoord(centerX);
-        int centerBlockY = getBlockCoord(centerY);
-        int centerBlockZ = getBlockCoord(centerZ);
-        int intRadius = (int) Math.ceil(highlightRadius);
-        // Iterate over a cube surrounding the center block
-        for (int x = centerBlockX - intRadius; x <= centerBlockX + intRadius; x++) {
-            for (int y = centerBlockY - intRadius; y <= centerBlockY + intRadius; y++) {
-                for (int z = centerBlockZ - intRadius; z <= centerBlockZ + intRadius; z++) {
-                    BlockPos pos = new BlockPos(x, y, z);
-                    if (isWithinSphere(pos) && isBlockExposed(pos, level)) {
-                        highlightedPositions.add(pos);
-                    }
-                }
-            }
-        }
-    }
-
     public void remove(BlockPos brokenPos, Level level) {
         highlightedPositions.remove(brokenPos);
-        for (Direction dir : Direction.values()) {
-            BlockPos neighborPos = brokenPos.relative(dir);
-            if (isWithinSphere(neighborPos)) {
-                if (isBlockExposed(neighborPos, level)) {
-                    if (!highlightedPositions.contains(neighborPos)) {
-                        highlightedPositions.add(neighborPos);
-                    }
-                } else {
-                    highlightedPositions.remove(neighborPos);
-                }
-            }
-        }
+        if (level.getBlockState(brokenPos).canOcclude()) return;
+        CheckSurroundings(brokenPos, level);
     }
 
     public void add(BlockPos placedPos, Level level) {
         if (!isWithinSphere(placedPos)) return;
+        if (!level.getBlockState(placedPos).canOcclude()) return;
+        // This seems obvious... the block was just placed, so it's exposed
+        // But depending on the timing, or falling "sand", etc... it might not be true.
         if (isBlockExposed(placedPos, level)) {
             if (!highlightedPositions.contains(placedPos)) {
                 highlightedPositions.add(placedPos);
@@ -114,8 +113,12 @@ public class HighlightSphere {
         } else {
             highlightedPositions.remove(placedPos);
         }
+        CheckSurroundings(placedPos, level);
+    }
+
+    private void CheckSurroundings(BlockPos blockPos, Level level) {
         for (Direction dir : Direction.values()) {
-            BlockPos neighborPos = placedPos.relative(dir);
+            BlockPos neighborPos = blockPos.relative(dir);
             if (isWithinSphere(neighborPos)) {
                 if (isBlockExposed(neighborPos, level)) {
                     if (!highlightedPositions.contains(neighborPos)) {

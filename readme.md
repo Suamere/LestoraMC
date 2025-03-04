@@ -26,7 +26,6 @@ Current Development 3: Learning to swim.  Time in water, Time in game, Particula
 - Use the command `/lestora setLevels swimLevel <0-3>` to set your swimLevel.  Defaults to 0, which means you essentially insta-die in water that's two deep (punny).  Level 3 means you can swim.
 - Use the command `/lestora highlightRadius <radius>` to highlight a spherical area of breakable blocks from your current location.
 - Use the command `/lestora showDebug [true/false]` to show current debug info related to beta development.
-- Use the command `/lestora whatAmIHolding` to print out the official name of the item you're holding.  Currently used to help populate the config file for dynamic lighting.
 
 ## Compatibility
 - **Minecraft Version:** 1.21.4
