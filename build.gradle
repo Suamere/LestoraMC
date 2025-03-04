@@ -105,7 +105,6 @@ dependencies {
 
 mixin {
     add sourceSets.main, "mixins.lestora.refmap.json"
-    config "mixins.lestora.dynamiclighting.json"
     config "mixins.lestora.highlight.json"
     debug.verbose = true
     debug.export = true

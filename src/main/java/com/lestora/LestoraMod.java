@@ -2,7 +2,6 @@ package com.lestora;
 
 import com.lestora.AI.AIRequestThread;
 import com.lestora.common.data.SQLiteManager;
-import com.lestora.dynamiclighting.ConfigLighting;
 import com.lestora.temperature.ConfigBiomeTemp;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
@@ -30,7 +29,6 @@ public class LestoraMod {
 //        config.getRootLogger().addAppender(appender, org.apache.logging.log4j.Level.INFO, null);
 //        context.updateLoggers();
 
-        constructContext.registerConfig(ModConfig.Type.COMMON, ConfigLighting.LIGHTING_CONFIG, "lestora-lighting.toml");
         constructContext.registerConfig(ModConfig.Type.COMMON, ConfigBiomeTemp.BIOME_CONFIG, "lestora-biome.toml");
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(this);
         AIRequestThread.startBackgroundProcessing();
