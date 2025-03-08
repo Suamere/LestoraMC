@@ -6,17 +6,19 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class HighlightSphere {
+    private final UUID groupID;
     private double centerX;
     private double centerY;
     private double centerZ;
     private double highlightRadius;
-    private final List<BlockPos> highlightedPositions = new CopyOnWriteArrayList<>();
+
+    public HighlightSphere() {
+        this.groupID = UUID.randomUUID();
+    }
 
     private static final ConcurrentHashMap<UUID, HighlightSphere> userConfigs = new ConcurrentHashMap<>();
 
@@ -38,9 +40,6 @@ public class HighlightSphere {
         return userConfigs.get(userId);
     }
 
-    public Boolean hasHighlights() { return !highlightedPositions.isEmpty(); }
-    public List<BlockPos> getHighlightedPositions() { return highlightedPositions; }
-
     private int getBlockCoord(double coord) {
         return (int) Math.floor(coord);
     }
@@ -58,7 +57,7 @@ public class HighlightSphere {
     }
 
     private void updateHighlightedPositions(Level level) {
-        highlightedPositions.clear();
+        HighlightMemory.clear(groupID);
         int centerBlockX = getBlockCoord(centerX);
         int centerBlockY = getBlockCoord(centerY);
         int centerBlockZ = getBlockCoord(centerZ);
@@ -74,29 +73,16 @@ public class HighlightSphere {
                 int maxDz = (int) Math.floor(Math.sqrt(radiusSq - dxySq));
                 for (int dz = -maxDz; dz <= maxDz; dz++) {
                     BlockPos pos = new BlockPos(centerBlockX + dx, centerBlockY + dy, centerBlockZ + dz);
-                    if (isBlockExposed(pos, level) && !highlightedPositions.contains(pos)) {
-                        highlightedPositions.add(pos);
+                    if (HighlightMemory.isBlockExposed(pos, level) && !HighlightMemory.contains(groupID, pos)) {
+                        HighlightMemory.add(groupID, pos, HighlightColor.red());
                     }
                 }
             }
         }
     }
 
-    private boolean isBlockExposed(BlockPos pos, Level level) {
-        BlockState state = level.getBlockState(pos);
-        if (!state.canOcclude()) return false;
-        for (Direction dir : Direction.values()) {
-            BlockPos neighborPos = pos.relative(dir);
-            BlockState neighborState = level.getBlockState(neighborPos);
-            if (!neighborState.canOcclude() || neighborState.getFluidState().is(FluidTags.LAVA)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public void remove(BlockPos brokenPos, Level level) {
-        highlightedPositions.remove(brokenPos);
+        HighlightMemory.remove(groupID, brokenPos);
         if (level.getBlockState(brokenPos).canOcclude()) return;
         CheckSurroundings(brokenPos, level);
     }
@@ -106,12 +92,12 @@ public class HighlightSphere {
         if (!level.getBlockState(placedPos).canOcclude()) return;
         // This seems obvious... the block was just placed, so it's exposed
         // But depending on the timing, or falling "sand", etc... it might not be true.
-        if (isBlockExposed(placedPos, level)) {
-            if (!highlightedPositions.contains(placedPos)) {
-                highlightedPositions.add(placedPos);
+        if (HighlightMemory.isBlockExposed(placedPos, level)) {
+            if (!HighlightMemory.contains(groupID, placedPos)) {
+                HighlightMemory.add(groupID, placedPos, HighlightColor.red());
             }
         } else {
-            highlightedPositions.remove(placedPos);
+            HighlightMemory.remove(groupID, placedPos);
         }
         CheckSurroundings(placedPos, level);
     }
@@ -120,12 +106,12 @@ public class HighlightSphere {
         for (Direction dir : Direction.values()) {
             BlockPos neighborPos = blockPos.relative(dir);
             if (isWithinSphere(neighborPos)) {
-                if (isBlockExposed(neighborPos, level)) {
-                    if (!highlightedPositions.contains(neighborPos)) {
-                        highlightedPositions.add(neighborPos);
+                if (HighlightMemory.isBlockExposed(neighborPos, level)) {
+                    if (!HighlightMemory.contains(groupID, neighborPos)) {
+                        HighlightMemory.add(groupID, neighborPos, HighlightColor.red());
                     }
                 } else {
-                    highlightedPositions.remove(neighborPos);
+                    HighlightMemory.remove(groupID, neighborPos);
                 }
             }
         }

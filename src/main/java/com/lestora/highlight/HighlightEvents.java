@@ -1,18 +1,25 @@
 package com.lestora.highlight;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 
+import net.minecraftforge.client.event.InputEvent;
+import org.lwjgl.glfw.GLFW;
+
 @Mod.EventBusSubscriber
 public class HighlightEvents {
+    public static boolean isPlayerCrouchingKeyDown = false;
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     @SubscribeEvent
@@ -37,10 +44,47 @@ public class HighlightEvents {
         if (player == null) return;
 
         HighlightSphere config = HighlightSphere.getUserHighlightConfig(player.getUUID());
-        if (config == null || !config.hasHighlights()) return;
+        if (config == null || !HighlightMemory.hasHighlights()) return;
 
         scheduler.schedule(() -> {
             Minecraft.getInstance().execute(() -> action.accept(level, config));
         }, 200, TimeUnit.MILLISECONDS);
+    }
+
+
+    @SubscribeEvent
+    public static void onKeyInput(InputEvent.Key event) {
+        if (event.getKey() == Minecraft.getInstance().options.keyShift.getKey().getValue()) {
+            var toggle = Minecraft.getInstance().options.toggleCrouch().get();
+            var isDown = event.getAction() == GLFW.GLFW_PRESS;
+            var isUp = event.getAction() == GLFW.GLFW_RELEASE;
+            var isChanged = false;
+
+            if (toggle && isDown) {
+                isPlayerCrouchingKeyDown = !isPlayerCrouchingKeyDown;
+                isChanged = true;
+            }
+            else if (!toggle) {
+                if (isDown && !isPlayerCrouchingKeyDown) {
+                    isPlayerCrouchingKeyDown = true;
+                    isChanged = true;
+                } else if (isUp && isPlayerCrouchingKeyDown) {
+                    isPlayerCrouchingKeyDown = false;
+                    isChanged = true;
+                }
+            }
+            if (isChanged && isPlayerCrouchingKeyDown) {
+                scheduler.schedule(() -> {
+                    Minecraft.getInstance().execute(() -> {
+                        if (Minecraft.getInstance().player.isCrouching()) {
+                            HighlightDarkness.processTorches(Minecraft.getInstance().player, Minecraft.getInstance().level);
+                        }
+                    });
+                }, 100, TimeUnit.MILLISECONDS);
+            }
+            else if (isChanged) {
+                HighlightDarkness.removeTorches();
+            }
+        }
     }
 }

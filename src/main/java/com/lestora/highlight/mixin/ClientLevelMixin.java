@@ -1,5 +1,6 @@
 package com.lestora.highlight.mixin;
 
+import com.lestora.highlight.HighlightMemory;
 import com.lestora.highlight.HighlightSphere;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -21,7 +22,7 @@ public class ClientLevelMixin {
         if (Minecraft.getInstance().player == null) return;
         UUID userId = Minecraft.getInstance().player.getUUID();
         HighlightSphere config = HighlightSphere.getUserHighlightConfig(userId);
-        if (config == null || !config.hasHighlights()) return;
+        if (config == null || !HighlightMemory.hasHighlights()) return;
 
         Level level = (Level)(Object)this;
         if (newState.is(Blocks.AIR)) {
