@@ -1,14 +1,11 @@
 package com.lestora.highlight;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -77,13 +74,13 @@ public class HighlightEvents {
                 scheduler.schedule(() -> {
                     Minecraft.getInstance().execute(() -> {
                         if (Minecraft.getInstance().player.isCrouching()) {
-                            HighlightDarkness.processTorches(Minecraft.getInstance().player, Minecraft.getInstance().level);
+                            HighlightEmitter.processTorches(Minecraft.getInstance().player, Minecraft.getInstance().level);
                         }
                     });
                 }, 100, TimeUnit.MILLISECONDS);
             }
             else if (isChanged) {
-                HighlightDarkness.removeTorches();
+                HighlightEmitter.removeTorches();
             }
         }
     }

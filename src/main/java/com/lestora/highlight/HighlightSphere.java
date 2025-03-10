@@ -74,7 +74,7 @@ public class HighlightSphere {
                 for (int dz = -maxDz; dz <= maxDz; dz++) {
                     BlockPos pos = new BlockPos(centerBlockX + dx, centerBlockY + dy, centerBlockZ + dz);
                     if (HighlightMemory.isBlockExposed(pos, level) && !HighlightMemory.contains(groupID, pos)) {
-                        HighlightMemory.add(groupID, pos, HighlightColor.red());
+                        HighlightMemory.add(groupID, HighlightEntry.Whole(pos, HighlightColor.red()));
                     }
                 }
             }
@@ -94,7 +94,7 @@ public class HighlightSphere {
         // But depending on the timing, or falling "sand", etc... it might not be true.
         if (HighlightMemory.isBlockExposed(placedPos, level)) {
             if (!HighlightMemory.contains(groupID, placedPos)) {
-                HighlightMemory.add(groupID, placedPos, HighlightColor.red());
+                HighlightMemory.add(groupID, HighlightEntry.Whole(placedPos, HighlightColor.red()));
             }
         } else {
             HighlightMemory.remove(groupID, placedPos);
@@ -108,7 +108,7 @@ public class HighlightSphere {
             if (isWithinSphere(neighborPos)) {
                 if (HighlightMemory.isBlockExposed(neighborPos, level)) {
                     if (!HighlightMemory.contains(groupID, neighborPos)) {
-                        HighlightMemory.add(groupID, neighborPos, HighlightColor.red());
+                        HighlightMemory.add(groupID, HighlightEntry.Whole(neighborPos, HighlightColor.red()));
                     }
                 } else {
                     HighlightMemory.remove(groupID, neighborPos);

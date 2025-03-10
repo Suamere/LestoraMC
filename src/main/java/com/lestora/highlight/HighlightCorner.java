@@ -1,0 +1,7 @@
+package com.lestora.highlight;
+
+public enum HighlightCorner {
+    TOP_NORTH, TOP_SOUTH, TOP_EAST, TOP_WEST,
+    BOTTOM_NORTH, BOTTOM_SOUTH, BOTTOM_EAST, BOTTOM_WEST,
+    NORTH_EAST, NORTH_WEST, SOUTH_EAST, SOUTH_WEST, NORTH, SOUTH, EAST, WEST;
+}

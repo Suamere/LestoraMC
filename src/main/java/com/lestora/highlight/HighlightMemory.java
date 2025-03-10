@@ -42,10 +42,10 @@ public class HighlightMemory {
     }
 
     // Adds a block position to the highlights for the given group along with its HighlightColor.
-    public static void add(UUID groupID, BlockPos placedPos, HighlightColor color) {
+    public static void add(UUID groupID, HighlightEntry highlight) {
         highlightedPositions
                 .computeIfAbsent(groupID, k -> new CopyOnWriteArrayList<>())
-                .add(new HighlightEntry(placedPos, color));
+                .add(highlight);
     }
 
     // Removes a block position from the highlights for the given group.
@@ -74,10 +74,15 @@ public class HighlightMemory {
         return false;
     }
 
-    public static boolean canMobSpawnOn(Level level, BlockPos pos) {
+    public static boolean isBlockSturdy(Level level, BlockPos pos) {
         BlockState standingBlock = level.getBlockState(pos);
         if (!standingBlock.canOcclude()) return false;
         if (!standingBlock.isFaceSturdy(level, pos, Direction.UP)) return false;
+        return true;
+    }
+
+    public static boolean canMobSpawnOn(Level level, BlockPos pos) {
+        if (!isBlockSturdy(level, pos)) return false;
         BlockState above = level.getBlockState(pos.above());
         BlockState above2 = level.getBlockState(pos.above(2));
         return above.isAir() && above2.isAir();
