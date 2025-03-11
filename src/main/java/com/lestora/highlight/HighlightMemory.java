@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.*;
@@ -74,15 +75,22 @@ public class HighlightMemory {
         return false;
     }
 
-    public static boolean isBlockSturdy(Level level, BlockPos pos) {
+    public static boolean isTransparent(BlockState blockState, BlockPos blockPos) {
+        if (blockState.getLightBlock() == 0) return true;
+        if (blockState.getBlock() == Blocks.AIR || blockState.getBlock() == Blocks.CAVE_AIR) return true;
+        if (blockState.getBlock() == Blocks.WATER) return true;
+        return false;
+    }
+
+    public static boolean isBlockSturdy(Level level, BlockPos pos, Direction dir) {
         BlockState standingBlock = level.getBlockState(pos);
         if (!standingBlock.canOcclude()) return false;
-        if (!standingBlock.isFaceSturdy(level, pos, Direction.UP)) return false;
+        if (!standingBlock.isFaceSturdy(level, pos, dir)) return false;
         return true;
     }
 
-    public static boolean canMobSpawnOn(Level level, BlockPos pos) {
-        if (!isBlockSturdy(level, pos)) return false;
+    public static boolean canMobSpawnOn(Level level, BlockPos pos, Direction dir) {
+        if (!isBlockSturdy(level, pos, dir)) return false;
         BlockState above = level.getBlockState(pos.above());
         BlockState above2 = level.getBlockState(pos.above(2));
         return above.isAir() && above2.isAir();

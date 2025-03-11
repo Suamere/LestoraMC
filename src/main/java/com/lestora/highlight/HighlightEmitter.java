@@ -1,9 +1,13 @@
 package com.lestora.highlight;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import org.checkerframework.checker.units.qual.A;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.charset.StandardCharsets;
@@ -37,7 +41,7 @@ public class HighlightEmitter {
     public static void processTorches(Player player, Level level) {
         if (level == null) return;
         removeTorches();
-        int outerRadius = 15;
+        int outerRadius = 14;
         var torchPositions = findTorchesAroundPlayer(player);
         for (BlockPos torchPos : torchPositions) {
             UUID torchUUID = UUID.nameUUIDFromBytes(
@@ -55,33 +59,44 @@ public class HighlightEmitter {
                     for (int dz = -outerRadius; dz <= outerRadius; dz++) {
                         int manhattanDistance = Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
                         if (manhattanDistance == outerRadius || manhattanDistance == innerRadius) {
-                            BlockPos pos = torchPos.offset(dx, dy, dz);
-                            if (HighlightMemory.isBlockSturdy(level, pos) && HighlightMemory.isBlockExposed(pos, level)) {
-
-                                HighlightCorner corner = null;
-                                HighlightCorner corner2 = null;
-                                if (dx == 0 && Math.abs(dz) == outerRadius - 1) {
-                                    corner = dz < 0 ? HighlightCorner.NORTH : HighlightCorner.SOUTH;
-                                } else if (dz == 0 && Math.abs(dx) == outerRadius - 1) {
-                                    corner = dx < 0 ? HighlightCorner.WEST : HighlightCorner.EAST;
-                                } else if (dx == 0 && Math.abs(dz) == innerRadius - 1) {
-                                    corner = dz < 0 ? HighlightCorner.NORTH_WEST : HighlightCorner.SOUTH_EAST;
-                                    corner2 = dz < 0 ? HighlightCorner.WEST : HighlightCorner.EAST;
-                                } else if (dz == 0 && Math.abs(dx) == innerRadius - 1) {
-                                    corner = dx < 0 ? HighlightCorner.NORTH_WEST : HighlightCorner.SOUTH_EAST;
-                                    corner2 = dx < 0 ? HighlightCorner.NORTH : HighlightCorner.SOUTH;
-                                } else if (manhattanDistance == outerRadius) {
-                                    corner = getCornerIn(torchPos, pos);
-                                } else if (manhattanDistance == innerRadius) {
-                                    corner = getCornerOut(torchPos, pos);
+                            BlockPos lightBlockPos = torchPos.offset(dx, dy, dz);
+                            var lightBlockState = level.getBlockState(lightBlockPos);
+                            if (HighlightMemory.isTransparent(lightBlockState, lightBlockPos)) {
+                                int blockLight = level.getLightEngine().getLayerListener(LightLayer.BLOCK).getLightValue(lightBlockPos);
+                                var belowLightPos = lightBlockPos.below();
+                                var northLightPos = lightBlockPos.north();
+                                if (manhattanDistance == innerRadius && blockLight == 1) {
+                                    if (HighlightMemory.isBlockSturdy(level, belowLightPos, Direction.UP) && HighlightMemory.isBlockExposed(belowLightPos, level)) {
+                                        if (dx == 0 && Math.abs(dz) == innerRadius) {
+                                            var c1 = dz < 0 ? HighlightCorner.NORTH_WEST : HighlightCorner.SOUTH_EAST;
+                                            var c2 = dz < 0 ? HighlightCorner.WEST : HighlightCorner.EAST;
+                                            HighlightMemory.add(torchUUID, new HighlightEntry(belowLightPos, HighlightColor.yellow(), HighlightFace.UP, c1));
+                                            HighlightMemory.add(torchUUID, new HighlightEntry(belowLightPos, HighlightColor.yellow(), HighlightFace.UP, c2));
+                                        } else if (dz == 0 && Math.abs(dx) == innerRadius) {
+                                            var c1 = dx < 0 ? HighlightCorner.NORTH_WEST : HighlightCorner.SOUTH_EAST;
+                                            var c2 = dx < 0 ? HighlightCorner.NORTH : HighlightCorner.SOUTH;
+                                            HighlightMemory.add(torchUUID, new HighlightEntry(belowLightPos, HighlightColor.yellow(), HighlightFace.UP, c1));
+                                            HighlightMemory.add(torchUUID, new HighlightEntry(belowLightPos, HighlightColor.yellow(), HighlightFace.UP, c2));
+                                        } else {
+                                            HighlightMemory.add(torchUUID, new HighlightEntry(belowLightPos, HighlightColor.yellow(), HighlightFace.UP, getCornerOut(torchPos, lightBlockPos, Direction.UP)));
+                                        }
+                                    }
+                                    if (HighlightMemory.isBlockSturdy(level, northLightPos, Direction.SOUTH) && HighlightMemory.isBlockExposed(northLightPos, level)) {
+                                        HighlightMemory.add(torchUUID, new HighlightEntry(northLightPos, HighlightColor.yellow(), HighlightFace.SOUTH, getCornerOut(torchPos, lightBlockPos, Direction.SOUTH)));
+                                    }
                                 }
-
-                                if (corner != null) {
-                                    //var color = generateColorFromPos(torchPos, 0.5f);
-                                    HighlightColor color = manhattanDistance == outerRadius ? HighlightColor.black(1.0f) : HighlightColor.yellow();
-                                    HighlightMemory.add(torchUUID, new HighlightEntry(pos, color, HighlightFace.UP, corner));
-                                    if (corner2 != null)
-                                        HighlightMemory.add(torchUUID, new HighlightEntry(pos, color, HighlightFace.UP, corner2));
+                                else if (manhattanDistance == outerRadius && blockLight == 0) {
+                                    if (HighlightMemory.isBlockSturdy(level, belowLightPos, Direction.UP) && HighlightMemory.isBlockExposed(belowLightPos, level)) {
+                                        if (dx == 0 && Math.abs(dz) == outerRadius) {
+                                            var c1 = dz < 0 ? HighlightCorner.NORTH : HighlightCorner.SOUTH;
+                                            HighlightMemory.add(torchUUID, new HighlightEntry(belowLightPos, HighlightColor.black(1.0f), HighlightFace.UP, c1));
+                                        } else if (dz == 0 && Math.abs(dx) == outerRadius) {
+                                            var c1 = dx < 0 ? HighlightCorner.WEST : HighlightCorner.EAST;
+                                            HighlightMemory.add(torchUUID, new HighlightEntry(belowLightPos, HighlightColor.black(1.0f), HighlightFace.UP, c1));
+                                        } else {
+                                            HighlightMemory.add(torchUUID, new HighlightEntry(belowLightPos, HighlightColor.black(1.0f), HighlightFace.UP, getCornerIn(torchPos, lightBlockPos)));
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -103,7 +118,7 @@ public class HighlightEmitter {
         return corner;
     }
 
-    private static @NotNull HighlightCorner getCornerOut(BlockPos torchPos, BlockPos pos) {
+    private static @NotNull HighlightCorner getCornerOut(BlockPos torchPos, BlockPos pos, Direction facing) {
         int relX = pos.getX() - torchPos.getX();
         int relZ = pos.getZ() - torchPos.getZ();
 
@@ -112,7 +127,14 @@ public class HighlightEmitter {
         else if (relX < 0 && relZ < 0) { corner = HighlightCorner.NORTH_WEST; }
         else if (relX >= 0) { corner = HighlightCorner.SOUTH_EAST; }
         else { corner = HighlightCorner.SOUTH_WEST; }
-        return corner;
+        if (facing == Direction.UP) return corner;
+
+        if (facing == Direction.SOUTH) {
+            if (corner == HighlightCorner.NORTH_EAST) return HighlightCorner.BOTTOM_WEST;
+            if (corner == HighlightCorner.NORTH_WEST) return HighlightCorner.BOTTOM_EAST;
+        }
+
+        return HighlightCorner.TOP_EAST;
     }
 
     public static void removeTorches() {

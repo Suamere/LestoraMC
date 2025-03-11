@@ -1,6 +1,7 @@
 package com.lestora.highlight.mixin;
 
 import com.lestora.highlight.HighlightEntry;
+import com.lestora.highlight.HighlightFace;
 import com.lestora.highlight.HighlightMemory;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -89,7 +90,8 @@ public abstract class LevelRendererMixin {
             float[] arr = new float[9];
             // ToDo: Only UP and DOWN are probably right, lol
             switch (entry.face) {
-                case UP: baseY += 1;
+                case UP:
+                    baseY += 1;
                     arr = switch (entry.corner) {
                         case NORTH_EAST -> new float[]{0, 0, 0, 1, 0, 1, 1, 0, 0};
                         case SOUTH_EAST -> new float[]{0, 0, 1, 1, 0, 1, 1, 0, 0};
@@ -101,10 +103,17 @@ public abstract class LevelRendererMixin {
                         case WEST ->       new float[]{h, 0, h, 1, 0, 1, 1, 0, 0};
                         default -> arr;
                     };
-                break;
+                    break;
                 case DOWN: baseY -= 1; break;
                 case NORTH: baseX += 1; break;
-                case SOUTH: baseX -= 1; break;
+                case SOUTH:
+                    baseZ += 1;
+                    arr = switch (entry.corner) {
+                        case BOTTOM_WEST -> new float[]{0, 0, 0, 1, 0, 0, 0, 1, 0};
+                        case BOTTOM_EAST -> new float[]{0, 0, 0, 1, 0, 0, 1, 1, 0};
+                        default -> arr;
+                    };
+                    break;
                 case WEST: baseZ += 1; break;
                 case EAST: baseZ -= 1; break;
             }
