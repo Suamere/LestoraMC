@@ -44,10 +44,10 @@ public class HighlightEmitter {
                     ("torch:" + torchPos.getX() + ":" + torchPos.getY() + ":" + torchPos.getZ())
                             .getBytes(StandardCharsets.UTF_8)
             );
-            var torchEntry1 = new HighlightEntry(torchPos.below(), generateColorFromPos(torchPos, 1.0f), HighlightFace.UP, HighlightCorner.NORTH_EAST);
-            var torchEntry2 = new HighlightEntry(torchPos.below(), generateColorFromPos(torchPos, 1.0f), HighlightFace.UP, HighlightCorner.SOUTH_WEST);
-            HighlightMemory.add(torchUUID, torchEntry1);
-            HighlightMemory.add(torchUUID, torchEntry2);
+//            var torchEntry1 = new HighlightEntry(torchPos.below(), generateColorFromPos(torchPos, 1.0f), HighlightFace.UP, HighlightCorner.NORTH_EAST);
+//            var torchEntry2 = new HighlightEntry(torchPos.below(), generateColorFromPos(torchPos, 1.0f), HighlightFace.UP, HighlightCorner.SOUTH_WEST);
+//            HighlightMemory.add(torchUUID, torchEntry1);
+//            HighlightMemory.add(torchUUID, torchEntry2);
             torchUUIDs.add(torchUUID);
             var innerRadius = outerRadius - 1;
             for (int dx = -outerRadius; dx <= outerRadius; dx++) {
@@ -57,39 +57,31 @@ public class HighlightEmitter {
                         if (manhattanDistance == outerRadius || manhattanDistance == innerRadius) {
                             BlockPos pos = torchPos.offset(dx, dy, dz);
                             if (HighlightMemory.isBlockSturdy(level, pos) && HighlightMemory.isBlockExposed(pos, level)) {
+
+                                HighlightCorner corner = null;
+                                HighlightCorner corner2 = null;
                                 if (dx == 0 && Math.abs(dz) == outerRadius - 1) {
-                                    if (dz < 0)
-                                        HighlightMemory.add(torchUUID, new HighlightEntry(pos, HighlightColor.black(1.0f), HighlightFace.UP, HighlightCorner.NORTH));
-                                    else
-                                        HighlightMemory.add(torchUUID, new HighlightEntry(pos, HighlightColor.black(1.0f), HighlightFace.UP, HighlightCorner.SOUTH));
+                                    corner = dz < 0 ? HighlightCorner.NORTH : HighlightCorner.SOUTH;
+                                } else if (dz == 0 && Math.abs(dx) == outerRadius - 1) {
+                                    corner = dx < 0 ? HighlightCorner.WEST : HighlightCorner.EAST;
+                                } else if (dx == 0 && Math.abs(dz) == innerRadius - 1) {
+                                    corner = dz < 0 ? HighlightCorner.NORTH_WEST : HighlightCorner.SOUTH_EAST;
+                                    corner2 = dz < 0 ? HighlightCorner.WEST : HighlightCorner.EAST;
+                                } else if (dz == 0 && Math.abs(dx) == innerRadius - 1) {
+                                    corner = dx < 0 ? HighlightCorner.NORTH_WEST : HighlightCorner.SOUTH_EAST;
+                                    corner2 = dx < 0 ? HighlightCorner.NORTH : HighlightCorner.SOUTH;
+                                } else if (manhattanDistance == outerRadius) {
+                                    corner = getCornerIn(torchPos, pos);
+                                } else if (manhattanDistance == innerRadius) {
+                                    corner = getCornerOut(torchPos, pos);
                                 }
-                                else if (dz == 0 && Math.abs(dx) == outerRadius - 1) {
-                                    if (dx < 0)
-                                        HighlightMemory.add(torchUUID, new HighlightEntry(pos, HighlightColor.black(1.0f), HighlightFace.UP, HighlightCorner.EAST));
-                                    else
-                                        HighlightMemory.add(torchUUID, new HighlightEntry(pos, HighlightColor.black(1.0f), HighlightFace.UP, HighlightCorner.WEST));
-                                }
-                                else if (dx == 0 && Math.abs(dz) == innerRadius - 1) {
-                                    if (dz < 0)
-                                        HighlightMemory.add(torchUUID, new HighlightEntry(pos, HighlightColor.yellow(), HighlightFace.UP, HighlightCorner.SOUTH));
-                                    else
-                                        HighlightMemory.add(torchUUID, new HighlightEntry(pos, HighlightColor.yellow(), HighlightFace.UP, HighlightCorner.NORTH));
-                                }
-                                else if (dz == 0 && Math.abs(dx) == innerRadius - 1) {
-                                    if (dx < 0)
-                                        HighlightMemory.add(torchUUID, new HighlightEntry(pos, HighlightColor.yellow(), HighlightFace.UP, HighlightCorner.WEST));
-                                    else
-                                        HighlightMemory.add(torchUUID, new HighlightEntry(pos, HighlightColor.yellow(), HighlightFace.UP, HighlightCorner.EAST));
-                                }
-                                // ToDo: Add more else ifs for dy, for "UP" and "DOWN"
-                                else if (manhattanDistance == outerRadius) {
-                                    HighlightCorner corner = getCornerIn(torchPos, pos);
-                                    HighlightMemory.add(torchUUID, new HighlightEntry(pos, HighlightColor.black(1.0f), HighlightFace.UP, corner));
-                                }
-                                else if (manhattanDistance == innerRadius) {
-                                    HighlightCorner corner = getCornerOut(torchPos, pos);
+
+                                if (corner != null) {
                                     //var color = generateColorFromPos(torchPos, 0.5f);
-                                    HighlightMemory.add(torchUUID, new HighlightEntry(pos, HighlightColor.yellow(), HighlightFace.UP, corner));
+                                    HighlightColor color = manhattanDistance == outerRadius ? HighlightColor.black(1.0f) : HighlightColor.yellow();
+                                    HighlightMemory.add(torchUUID, new HighlightEntry(pos, color, HighlightFace.UP, corner));
+                                    if (corner2 != null)
+                                        HighlightMemory.add(torchUUID, new HighlightEntry(pos, color, HighlightFace.UP, corner2));
                                 }
                             }
                         }

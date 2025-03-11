@@ -71,6 +71,7 @@ public abstract class LevelRendererMixin {
     private static void RenderPlz2(List<HighlightEntry> highlights, PoseStack poseStack, Minecraft mc) {
         var buffer = mc.renderBuffers().bufferSource().getBuffer(TRIANGLE);
         Matrix4f matrix = poseStack.last().pose();
+        float h = 0.5f;
 
         for (var entry : highlights) {
             if (entry.face == null) continue;
@@ -85,41 +86,21 @@ public abstract class LevelRendererMixin {
             float baseX = pos.getX();
             float baseY = pos.getY();
             float baseZ = pos.getZ();
+            float[] arr = new float[9];
             // ToDo: Only UP and DOWN are probably right, lol
             switch (entry.face) {
                 case UP: baseY += 1;
-                switch (entry.corner){
-                    case NORTH_EAST:
-                        buffer.addVertex(matrix, baseX,     baseY, baseZ).setColor(red, green, blue, alpha);
-                        buffer.addVertex(matrix, baseX + 1, baseY, baseZ + 1).setColor(red, green, blue, alpha);
-                        buffer.addVertex(matrix, baseX + 1, baseY, baseZ).setColor(red, green, blue, alpha);
-                        break;
-                    case SOUTH_EAST:
-                        buffer.addVertex(matrix, baseX,     baseY, baseZ + 1).setColor(red, green, blue, alpha);
-                        buffer.addVertex(matrix, baseX + 1, baseY, baseZ + 1).setColor(red, green, blue, alpha);
-                        buffer.addVertex(matrix, baseX + 1, baseY, baseZ).setColor(red, green, blue, alpha);
-                        break;
-                    case SOUTH_WEST:
-                        buffer.addVertex(matrix, baseX,     baseY, baseZ).setColor(red, green, blue, alpha);
-                        buffer.addVertex(matrix, baseX,     baseY, baseZ + 1).setColor(red, green, blue, alpha);
-                        buffer.addVertex(matrix, baseX + 1, baseY, baseZ + 1).setColor(red, green, blue, alpha);
-                        break;
-                    case NORTH_WEST:
-                        buffer.addVertex(matrix, baseX,     baseY, baseZ).setColor(red, green, blue, alpha);
-                        buffer.addVertex(matrix, baseX,     baseY, baseZ + 1).setColor(red, green, blue, alpha);
-                        buffer.addVertex(matrix, baseX + 1, baseY, baseZ).setColor(red, green, blue, alpha);
-                        break;
-                    case NORTH:
-                        buffer.addVertex(matrix, baseX + 0.5f,     baseY, baseZ + 0.5f).setColor(red, green, blue, alpha);
-                        buffer.addVertex(matrix, baseX, baseY, baseZ + 1).setColor(red, green, blue, alpha);
-                        buffer.addVertex(matrix, baseX + 1, baseY, baseZ + 1).setColor(red, green, blue, alpha);
-                        break;
-                    case SOUTH:
-                        buffer.addVertex(matrix, baseX + 0.5f,     baseY, baseZ + 0.5f).setColor(red, green, blue, alpha);
-                        buffer.addVertex(matrix, baseX + 1, baseY, baseZ).setColor(red, green, blue, alpha);
-                        buffer.addVertex(matrix, baseX, baseY, baseZ).setColor(red, green, blue, alpha);
-                        break;
-                }
+                    arr = switch (entry.corner) {
+                        case NORTH_EAST -> new float[]{0, 0, 0, 1, 0, 1, 1, 0, 0};
+                        case SOUTH_EAST -> new float[]{0, 0, 1, 1, 0, 1, 1, 0, 0};
+                        case SOUTH_WEST -> new float[]{0, 0, 0, 0, 0, 1, 1, 0, 1};
+                        case NORTH_WEST -> new float[]{0, 0, 0, 0, 0, 1, 1, 0, 0};
+                        case NORTH ->      new float[]{h, 0, h, 0, 0, 1, 1, 0, 1};
+                        case SOUTH ->      new float[]{h, 0, h, 1, 0, 0, 0, 0, 0};
+                        case EAST ->       new float[]{h, 0, h, 0, 0, 0, 0, 0, 1};
+                        case WEST ->       new float[]{h, 0, h, 1, 0, 1, 1, 0, 0};
+                        default -> arr;
+                    };
                 break;
                 case DOWN: baseY -= 1; break;
                 case NORTH: baseX += 1; break;
@@ -127,6 +108,9 @@ public abstract class LevelRendererMixin {
                 case WEST: baseZ += 1; break;
                 case EAST: baseZ -= 1; break;
             }
+            buffer.addVertex(matrix, baseX + arr[0], baseY + arr[1], baseZ + arr[2]).setColor(red, green, blue, alpha);
+            buffer.addVertex(matrix, baseX + arr[3], baseY + arr[4], baseZ + arr[5]).setColor(red, green, blue, alpha);
+            buffer.addVertex(matrix, baseX + arr[6], baseY + arr[7], baseZ + arr[8]).setColor(red, green, blue, alpha);
         }
 
         mc.renderBuffers().bufferSource().endBatch(TRIANGLE);
