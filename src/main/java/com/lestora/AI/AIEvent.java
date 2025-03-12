@@ -17,6 +17,8 @@ import java.util.UUID;
 @EventBusSubscriber
 public class AIEvent {
 
+    public static boolean enableAI;
+
     // Right-click (interact) with entity event
     @SubscribeEvent
     public static void onEntityInteract(PlayerInteractEvent.EntityInteract event) {
@@ -33,12 +35,15 @@ public class AIEvent {
         if (!(event.getTarget() instanceof Villager villager)) {
             return;
         }
-        event.setCanceled(true);
 
-        var lestoraPlayer = LestoraPlayer.get(event.getEntity());
-        var lestoraVillager = LestoraVillager.get(villager);
-        System.out.println("Event?");
-        lestoraPlayer.TryFocusOnVillager(lestoraVillager);
+        if (enableAI) {
+            event.setCanceled(true);
+
+            var lestoraPlayer = LestoraPlayer.get(event.getEntity());
+            var lestoraVillager = LestoraVillager.get(villager);
+            System.out.println("Event?");
+            lestoraPlayer.TryFocusOnVillager(lestoraVillager);
+        }
     }
 
     @SubscribeEvent

@@ -3,11 +3,11 @@ package com.lestora.highlight.mixin;
 import com.lestora.highlight.HighlightEntry;
 import com.lestora.highlight.HighlightFace;
 import com.lestora.highlight.HighlightMemory;
+import com.lestora.highlight.PointLocation;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -69,10 +69,10 @@ public abstract class LevelRendererMixin {
         mc.renderBuffers().bufferSource().endBatch(RenderType.debugFilledBox());
     }
 
+    private static int lolCount = 0;
     private static void RenderPlz2(List<HighlightEntry> highlights, PoseStack poseStack, Minecraft mc) {
         var buffer = mc.renderBuffers().bufferSource().getBuffer(TRIANGLE);
         Matrix4f matrix = poseStack.last().pose();
-        float h = 0.5f;
 
         for (var entry : highlights) {
             if (entry.face == null) continue;
@@ -84,45 +84,121 @@ public abstract class LevelRendererMixin {
             int blue  = (int) (entry.color.getBlue()  * 255);
             int alpha = (int) (entry.color.getAlpha() * 255);
 
-            float baseX = pos.getX();
-            float baseY = pos.getY();
-            float baseZ = pos.getZ();
-            float[] arr = new float[9];
-            // ToDo: Only UP and DOWN are probably right, lol
-            switch (entry.face) {
-                case UP:
-                    baseY += 1;
-                    arr = switch (entry.corner) {
-                        case NORTH_EAST -> new float[]{0, 0, 0, 1, 0, 1, 1, 0, 0};
-                        case SOUTH_EAST -> new float[]{0, 0, 1, 1, 0, 1, 1, 0, 0};
-                        case SOUTH_WEST -> new float[]{0, 0, 0, 0, 0, 1, 1, 0, 1};
-                        case NORTH_WEST -> new float[]{0, 0, 0, 0, 0, 1, 1, 0, 0};
-                        case NORTH ->      new float[]{h, 0, h, 0, 0, 1, 1, 0, 1};
-                        case SOUTH ->      new float[]{h, 0, h, 1, 0, 0, 0, 0, 0};
-                        case EAST ->       new float[]{h, 0, h, 0, 0, 0, 0, 0, 1};
-                        case WEST ->       new float[]{h, 0, h, 1, 0, 1, 1, 0, 0};
-                        default -> arr;
-                    };
-                    break;
-                case DOWN: baseY -= 1; break;
-                case NORTH: baseX += 1; break;
-                case SOUTH:
-                    baseZ += 1;
-                    arr = switch (entry.corner) {
-                        case BOTTOM_WEST -> new float[]{0, 0, 0, 1, 0, 0, 0, 1, 0};
-                        case BOTTOM_EAST -> new float[]{0, 0, 0, 1, 0, 0, 1, 1, 0};
-                        default -> arr;
-                    };
-                    break;
-                case WEST: baseZ += 1; break;
-                case EAST: baseZ -= 1; break;
+            float[] arr = switch(entry.corner) {
+                // Corner arrows: tip is the given corner; base are the two adjacent corners (excluding the opposite)
+                case TOP_LEFT     -> Combine(entry.face, PointLocation.TopLeft, PointLocation.BottomLeft, PointLocation.TopRight);
+                case TOP_RIGHT    -> Combine(entry.face, PointLocation.TopRight, PointLocation.TopLeft, PointLocation.BottomRight);
+                case BOTTOM_LEFT  -> Combine(entry.face, PointLocation.BottomLeft, PointLocation.TopLeft, PointLocation.BottomRight);
+                case BOTTOM_RIGHT -> Combine(entry.face, PointLocation.BottomRight, PointLocation.BottomLeft, PointLocation.TopRight);
+                // Simple arrows: tip is at the center; base is along the opposite edge.
+                case UP           -> Combine(entry.face, PointLocation.MiddleMiddle, PointLocation.BottomLeft, PointLocation.BottomRight);
+                case DOWN         -> Combine(entry.face, PointLocation.MiddleMiddle, PointLocation.TopLeft, PointLocation.TopRight);
+                case LEFT         -> Combine(entry.face, PointLocation.MiddleMiddle, PointLocation.TopRight, PointLocation.BottomRight);
+                case RIGHT        -> Combine(entry.face, PointLocation.MiddleMiddle, PointLocation.TopLeft, PointLocation.BottomLeft);
+            };
+            if (lolCount == 0) {
+                System.err.printf("Corner: %s, Face: %s, Vertices: [%s, %s, %s]%n",
+                        entry.corner,
+                        entry.face,
+                        String.format("(%.2f, %.2f, %.2f)", arr[0], arr[1], arr[2]),
+                        String.format("(%.2f, %.2f, %.2f)", arr[3], arr[4], arr[5]),
+                        String.format("(%.2f, %.2f, %.2f)", arr[6], arr[7], arr[8])
+                );
+                lolCount++;
             }
-            buffer.addVertex(matrix, baseX + arr[0], baseY + arr[1], baseZ + arr[2]).setColor(red, green, blue, alpha);
-            buffer.addVertex(matrix, baseX + arr[3], baseY + arr[4], baseZ + arr[5]).setColor(red, green, blue, alpha);
-            buffer.addVertex(matrix, baseX + arr[6], baseY + arr[7], baseZ + arr[8]).setColor(red, green, blue, alpha);
+            buffer.addVertex(matrix, pos.getX() + arr[0], pos.getY() + arr[1], pos.getZ() + arr[2]).setColor(red, green, blue, alpha);
+            buffer.addVertex(matrix, pos.getX() + arr[3], pos.getY() + arr[4], pos.getZ() + arr[5]).setColor(red, green, blue, alpha);
+            buffer.addVertex(matrix, pos.getX() + arr[6], pos.getY() + arr[7], pos.getZ() + arr[8]).setColor(red, green, blue, alpha);
         }
 
         mc.renderBuffers().bufferSource().endBatch(TRIANGLE);
+    }
+
+    private static float[] Combine(HighlightFace face, PointLocation p1, PointLocation p2, PointLocation p3) {
+        var pt1 = getPoint(face, p1);
+        var pt2 = getPoint(face, p2);
+        var pt3 = getPoint(face, p3);
+        float[] v1, v2, v3, expected;
+        switch(face) {
+            case UP:    v1 = new float[]{pt1[0],1,pt1[1]}; v2 = new float[]{pt2[0],1,pt2[1]}; v3 = new float[]{pt3[0],1,pt3[1]}; expected = new float[]{0,1,0}; break;
+            case DOWN:  v1 = new float[]{pt1[0],0,pt1[1]}; v2 = new float[]{pt2[0],0,pt2[1]}; v3 = new float[]{pt3[0],0,pt3[1]}; expected = new float[]{0,-1,0}; break;
+            case NORTH: v1 = new float[]{pt1[0],pt1[1],0}; v2 = new float[]{pt2[0],pt2[1],0}; v3 = new float[]{pt3[0],pt3[1],0}; expected = new float[]{0,0,-1}; break;
+            case SOUTH: v1 = new float[]{pt1[0],pt1[1],1}; v2 = new float[]{pt2[0],pt2[1],1}; v3 = new float[]{pt3[0],pt3[1],1}; expected = new float[]{0,0,1}; break;
+            case EAST:  v1 = new float[]{1,pt1[0],pt1[1]}; v2 = new float[]{1,pt2[0],pt2[1]}; v3 = new float[]{1,pt3[0],pt3[1]}; expected = new float[]{1,0,0}; break;
+            case WEST:  v1 = new float[]{0,pt1[0],pt1[1]}; v2 = new float[]{0,pt2[0],pt2[1]}; v3 = new float[]{0,pt3[0],pt3[1]}; expected = new float[]{-1,0,0}; break;
+            default: return new float[]{0,0,0,0,0,0,0,0,0};
+        }
+        // Compute triangle normal: cross(v2-v1, v3-v1)
+        float[] a = new float[]{ v2[0]-v1[0], v2[1]-v1[1], v2[2]-v1[2] },
+                b = new float[]{ v3[0]-v1[0], v3[1]-v1[1], v3[2]-v1[2] },
+                n = new float[]{ a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0] };
+        float dot = n[0]*expected[0] + n[1]*expected[1] + n[2]*expected[2];
+        // If the computed normal is opposite of the expected one, swap pt2 and pt3.
+        if(dot < 0) {
+            float[] tmp = pt2; pt2 = pt3; pt3 = tmp;
+            // Recompute v2 and v3 with swapped points.
+            switch(face) {
+                case UP:    v2 = new float[]{pt2[0],1,pt2[1]}; v3 = new float[]{pt3[0],1,pt3[1]}; break;
+                case DOWN:  v2 = new float[]{pt2[0],0,pt2[1]}; v3 = new float[]{pt3[0],0,pt3[1]}; break;
+                case NORTH: v2 = new float[]{pt2[0],pt2[1],0}; v3 = new float[]{pt3[0],pt3[1],0}; break;
+                case SOUTH: v2 = new float[]{pt2[0],pt2[1],1}; v3 = new float[]{pt3[0],pt3[1],1}; break;
+                case EAST:  v2 = new float[]{1,pt2[0],pt2[1]}; v3 = new float[]{1,pt3[0],pt3[1]}; break;
+                case WEST:  v2 = new float[]{0,pt2[0],pt2[1]}; v3 = new float[]{0,pt3[0],pt3[1]}; break;
+            }
+        }
+        return new float[]{ v1[0], v1[1], v1[2], v2[0], v2[1], v2[2], v3[0], v3[1], v3[2] };
+    }
+
+    private static float[] getPoint(HighlightFace face, PointLocation loc) {
+        return switch(face) {
+            case SOUTH -> switch(loc) {
+                case TopLeft -> new float[]{0f, 1f}; case TopRight -> new float[]{1f, 1f};
+                case BottomLeft -> new float[]{0f, 0f}; case BottomRight -> new float[]{1f, 0f};
+                case TopMiddle -> new float[]{0.5f, 1f}; case LeftMiddle -> new float[]{0f, 0.5f};
+                case BottomMiddle -> new float[]{0.5f, 0f}; case RightMiddle -> new float[]{1f, 0.5f};
+                case MiddleMiddle -> new float[]{0.5f, 0.5f};
+            };
+            case NORTH -> switch(loc) {
+                // For NORTH face, we mirror the X axis (i.e. u = 1 - x)
+                case TopLeft -> new float[]{1f, 1f}; case TopRight -> new float[]{0f, 1f};
+                case BottomLeft -> new float[]{1f, 0f}; case BottomRight -> new float[]{0f, 0f};
+                case TopMiddle -> new float[]{0.5f, 1f}; case LeftMiddle -> new float[]{1f, 0.5f};
+                case BottomMiddle -> new float[]{0.5f, 0f}; case RightMiddle -> new float[]{0f, 0.5f};
+                case MiddleMiddle -> new float[]{0.5f, 0.5f};
+            };
+            case EAST -> switch(loc) {
+                // For EAST face (constant X=1), free coords: (z, y), with left = north (z=0)
+                case TopLeft -> new float[]{0f, 1f}; case TopRight -> new float[]{1f, 1f};
+                case BottomLeft -> new float[]{0f, 0f}; case BottomRight -> new float[]{1f, 0f};
+                case TopMiddle -> new float[]{0.5f, 1f}; case LeftMiddle -> new float[]{0f, 0.5f};
+                case BottomMiddle -> new float[]{0.5f, 0f}; case RightMiddle -> new float[]{1f, 0.5f};
+                case MiddleMiddle -> new float[]{0.5f, 0.5f};
+            };
+            case WEST -> switch(loc) {
+                // For WEST face (constant X=0), free coords: (z, y), but when facing EAST, left becomes south (z=1)
+                case TopLeft -> new float[]{1f, 1f}; case TopRight -> new float[]{0f, 1f};
+                case BottomLeft -> new float[]{1f, 0f}; case BottomRight -> new float[]{0f, 0f};
+                case TopMiddle -> new float[]{0.5f, 1f}; case LeftMiddle -> new float[]{1f, 0.5f};
+                case BottomMiddle -> new float[]{0.5f, 0f}; case RightMiddle -> new float[]{0f, 0.5f};
+                case MiddleMiddle -> new float[]{0.5f, 0.5f};
+            };
+            case UP -> switch(loc) {
+                // For UP face (constant Y=1), free coords: (x, z), with player's facing north so top = north (z=0) & left = west (x=0)
+                case TopLeft -> new float[]{0f, 0f}; case TopRight -> new float[]{1f, 0f};
+                case BottomLeft -> new float[]{0f, 1f}; case BottomRight -> new float[]{1f, 1f};
+                case TopMiddle -> new float[]{0.5f, 0f}; case LeftMiddle -> new float[]{0f, 0.5f};
+                case BottomMiddle -> new float[]{0.5f, 1f}; case RightMiddle -> new float[]{1f, 0.5f};
+                case MiddleMiddle -> new float[]{0.5f, 0.5f};
+            };
+            case DOWN -> switch(loc) {
+                // For DOWN face (constant Y=0), free coords: (x, z) but now top = south (z=1) since player's looking up from the north.
+                case TopLeft -> new float[]{0f, 1f}; case TopRight -> new float[]{1f, 1f};
+                case BottomLeft -> new float[]{0f, 0f}; case BottomRight -> new float[]{1f, 0f};
+                case TopMiddle -> new float[]{0.5f, 1f}; case LeftMiddle -> new float[]{0f, 0.5f};
+                case BottomMiddle -> new float[]{0.5f, 0f}; case RightMiddle -> new float[]{1f, 0.5f};
+                case MiddleMiddle -> new float[]{0.5f, 0.5f};
+            };
+        };
     }
 
     private static RenderStateShard.ShaderStateShard POSITION_COLOR_SHADER = new RenderStateShard.ShaderStateShard(CoreShaders.POSITION_COLOR);

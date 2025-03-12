@@ -1,5 +1,6 @@
 package com.lestora.command;
 
+import com.lestora.AI.AIEvent;
 import com.lestora.common.models.LestoraPlayer;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.minecraft.client.Minecraft;
@@ -34,6 +35,15 @@ public class CommandRegistrationHandler {
                                 })
                         )
                 )
+        );
+    }
+
+    private static void enableAI(LiteralArgumentBuilder<CommandSourceStack> root) {
+        root.then(Commands.literal("enableAI")
+            .executes(context -> {
+                AIEvent.enableAI = true;
+                return 1;
+            })
         );
     }
 }
