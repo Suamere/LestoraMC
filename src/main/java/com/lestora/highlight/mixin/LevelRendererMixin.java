@@ -69,7 +69,6 @@ public abstract class LevelRendererMixin {
         mc.renderBuffers().bufferSource().endBatch(RenderType.debugFilledBox());
     }
 
-    private static int lolCount = 0;
     private static void RenderPlz2(List<HighlightEntry> highlights, PoseStack poseStack, Minecraft mc) {
         var buffer = mc.renderBuffers().bufferSource().getBuffer(TRIANGLE);
         Matrix4f matrix = poseStack.last().pose();
@@ -96,16 +95,6 @@ public abstract class LevelRendererMixin {
                 case LEFT         -> Combine(entry.face, PointLocation.MiddleMiddle, PointLocation.TopRight, PointLocation.BottomRight);
                 case RIGHT        -> Combine(entry.face, PointLocation.MiddleMiddle, PointLocation.TopLeft, PointLocation.BottomLeft);
             };
-            if (lolCount == 0) {
-                System.err.printf("Corner: %s, Face: %s, Vertices: [%s, %s, %s]%n",
-                        entry.corner,
-                        entry.face,
-                        String.format("(%.2f, %.2f, %.2f)", arr[0], arr[1], arr[2]),
-                        String.format("(%.2f, %.2f, %.2f)", arr[3], arr[4], arr[5]),
-                        String.format("(%.2f, %.2f, %.2f)", arr[6], arr[7], arr[8])
-                );
-                lolCount++;
-            }
             buffer.addVertex(matrix, pos.getX() + arr[0], pos.getY() + arr[1], pos.getZ() + arr[2]).setColor(red, green, blue, alpha);
             buffer.addVertex(matrix, pos.getX() + arr[3], pos.getY() + arr[4], pos.getZ() + arr[5]).setColor(red, green, blue, alpha);
             buffer.addVertex(matrix, pos.getX() + arr[6], pos.getY() + arr[7], pos.getZ() + arr[8]).setColor(red, green, blue, alpha);

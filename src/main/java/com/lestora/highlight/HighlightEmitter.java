@@ -6,6 +6,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.charset.StandardCharsets;
@@ -36,11 +37,101 @@ public class HighlightEmitter {
     }
     private static final Set<UUID> torchUUIDs = ConcurrentHashMap.newKeySet();
 
+    public static List<LightEdges> findLightEdges(BlockPos torchPos, Level level) {
+        List<LightEdges> lightEdges = new ArrayList<>();
+        Queue<Node> queue = new LinkedList<>();
+        Set<BlockPos> visited = new HashSet<>();
+
+        queue.add(new Node(torchPos, 14));
+        visited.add(torchPos);
+
+        while (!queue.isEmpty()) {
+            Node current = queue.poll();
+            BlockPos currentPos = current.pos;
+            int currentLight = current.lightLevel;
+
+            if (currentLight > 1) {
+                // Propagate to adjacent transparent positions.
+                for (Direction direction : Direction.values()) {
+                    BlockPos neighborPos = currentPos.relative(direction);
+                    if (visited.contains(neighborPos)) continue;
+
+                    BlockState neighborState = level.getBlockState(neighborPos);
+                    if (!HighlightMemory.isTransparent(neighborState, neighborPos)) continue;
+
+                    visited.add(neighborPos);
+                    queue.add(new Node(neighborPos, currentLight - 1));
+                }
+            } else if (currentLight == 1) {
+                var actualLight = level.getLightEngine().getLayerListener(LightLayer.BLOCK).getLightValue(currentPos);
+                if (actualLight == 0)
+                    System.err.println("Light Level 0 where 1 was expected, is your light level configuration right?");
+                else if (actualLight > 1)
+                    continue;
+
+                List<BlockPos> lightLevel0 = new ArrayList<>();
+                for (Direction direction : Direction.values()) {
+                    BlockPos darkNeighbor = currentPos.relative(direction);
+                    var actualNeighborLight = level.getLightEngine().getLayerListener(LightLayer.BLOCK).getLightValue(darkNeighbor);
+                    if (actualNeighborLight == 0)
+                        lightLevel0.add(darkNeighbor);
+                }
+                if (!lightLevel0.isEmpty())
+                    lightEdges.add(new LightEdges(currentPos, lightLevel0));
+            }
+        }
+
+        return lightEdges;
+    }
+
+    public static class LightEdges {
+        public final BlockPos LightLevel1;
+        public final List<BlockPos> LightLevel0;
+
+        public LightEdges(BlockPos lightLevel1, List<BlockPos> lightLevel0) {
+            this.LightLevel1 = lightLevel1;
+            this.LightLevel0 = lightLevel0;
+        }
+    }
+
+    // Helper class to hold a BlockPos with its current light level.
+    private static class Node {
+        BlockPos pos;
+        int lightLevel;
+
+        Node(BlockPos pos, int lightLevel) {
+            this.pos = pos;
+            this.lightLevel = lightLevel;
+        }
+    }
+
+    public static class RelativePos {
+        public final int x;
+        public final int y;
+        public final int z;
+
+        public RelativePos(int x, int y, int z) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+
+        @Override
+        public String toString() {
+            return "RelativePos{" + "x=" + x + ", y=" + y + ", z=" + z + '}';
+        }
+    }
+
+    public static RelativePos getRelativePosition(BlockPos sourceBlockPos, BlockPos targetBlockPos) {
+        int dx = targetBlockPos.getX() - sourceBlockPos.getX();
+        int dy = targetBlockPos.getY() - sourceBlockPos.getY();
+        int dz = targetBlockPos.getZ() - sourceBlockPos.getZ();
+        return new RelativePos(dx, dy, dz);
+    }
+
     public static void processTorches(Player player, Level level) {
         if (level == null) return;
         removeTorches();
-        int outerRadius = 14;
-        int innerRadius = outerRadius - 1;
         var torchPositions = findTorchesAroundPlayer(player);
         for (BlockPos torchPos : torchPositions) {
             UUID torchUUID = UUID.nameUUIDFromBytes(
@@ -48,25 +139,14 @@ public class HighlightEmitter {
                             .getBytes(StandardCharsets.UTF_8)
             );
             torchUUIDs.add(torchUUID);
-            for (int dx = -outerRadius; dx <= outerRadius; dx++) {
-                for (int dy = -outerRadius; dy <= outerRadius; dy++) {
-                    for (int dz = -outerRadius; dz <= outerRadius; dz++) {
-                        int manhattanDistance = Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
-                        if (manhattanDistance == outerRadius || manhattanDistance == innerRadius) {
-                            BlockPos lightBlockPos = torchPos.offset(dx, dy, dz);
-                            var lightBlockState = level.getBlockState(lightBlockPos);
-                            if (HighlightMemory.isTransparent(lightBlockState, lightBlockPos)) {
-                                int blockLight = level.getLightEngine()
-                                        .getLayerListener(LightLayer.BLOCK)
-                                        .getLightValue(lightBlockPos);
-                                if (manhattanDistance == innerRadius && blockLight == 1) {
-                                    processInnerHighlight(torchPos, lightBlockPos, dx, dz, level, torchUUID);
-                                } else if (manhattanDistance == outerRadius && blockLight == 0) {
-                                    processOuterHighlight(torchPos, lightBlockPos, dx, dz, level, torchUUID);
-                                }
-                            }
-                        }
-                    }
+            var edges = findLightEdges(torchPos, level);
+            for (var edgePos : edges) {
+                var relativePos = getRelativePosition(torchPos, edgePos.LightLevel1);
+                processInnerHighlight(torchPos, edgePos.LightLevel1, relativePos.x, relativePos.z, level, torchUUID);
+                for (var darkPos : edgePos.LightLevel0) {
+                    // ToDo: MAYBE Check the edges again to see if this spot has light level 1?
+                    var relativeDarkPos = getRelativePosition(edgePos.LightLevel1, darkPos);
+                    processOuterHighlight(edgePos.LightLevel1, darkPos, relativeDarkPos.x, relativeDarkPos.z, level, torchUUID);
                 }
             }
         }
@@ -101,7 +181,7 @@ public class HighlightEmitter {
 
     private static void processOuterHighlight(BlockPos torchPos, BlockPos lightBlockPos, int dx, int dz, Level level, UUID torchUUID) {
         // Outer highlights use black color.
-        // For simplicity we add outer highlights only on faces where a sturdy block exists.
+        // For simplicity, we add outer highlights only on faces where a sturdy block exists.
         BlockPos upPos = lightBlockPos.below();
         if (HighlightMemory.isBlockSturdy(level, upPos, Direction.UP))
             processOuterHighlightUp(torchPos, lightBlockPos, dx, dz, torchUUID, upPos);
@@ -138,7 +218,7 @@ public class HighlightEmitter {
             HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.UP, c2));
         } else {
             HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.UP,
-                    getCornerOut(torchPos, lightBlockPos, Direction.UP)));
+                    getCornerOut(torchPos, lightBlockPos)));
         }
     }
 
@@ -155,8 +235,7 @@ public class HighlightEmitter {
             HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.DOWN, c1));
             HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.DOWN, c2));
         } else {
-            HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.DOWN,
-                    getCornerOut(torchPos, lightBlockPos, Direction.DOWN)));
+            HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.DOWN, getCornerOut(torchPos, lightBlockPos)));
         }
     }
 
@@ -165,8 +244,7 @@ public class HighlightEmitter {
         if (dx == 0 || dz == 0) {
             HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.SOUTH, HighlightCorner.UP));
         } else {
-            HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.SOUTH,
-                    getCornerOut(torchPos, lightBlockPos, Direction.SOUTH)));
+            HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.SOUTH, getCornerOut(torchPos, lightBlockPos)));
         }
     }
 
@@ -175,8 +253,7 @@ public class HighlightEmitter {
         if (dx == 0 || dz == 0) {
             HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.NORTH, HighlightCorner.DOWN));
         } else {
-            HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.NORTH,
-                    getCornerOut(torchPos, lightBlockPos, Direction.NORTH)));
+            HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.NORTH, getCornerOut(torchPos, lightBlockPos)));
         }
     }
 
@@ -185,8 +262,7 @@ public class HighlightEmitter {
         if (dx == 0 || dz == 0) {
             HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.EAST, HighlightCorner.UP));
         } else {
-            HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.EAST,
-                    getCornerOut(torchPos, lightBlockPos, Direction.EAST)));
+            HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.EAST, getCornerOut(torchPos, lightBlockPos)));
         }
     }
 
@@ -195,8 +271,7 @@ public class HighlightEmitter {
         if (dx == 0 || dz == 0) {
             HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.WEST, HighlightCorner.UP));
         } else {
-            HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.WEST,
-                    getCornerOut(torchPos, lightBlockPos, Direction.WEST)));
+            HighlightMemory.add(torchUUID, new HighlightEntry(targetPos, HighlightColor.yellow(), HighlightFace.WEST, getCornerOut(torchPos, lightBlockPos)));
         }
     }
 
@@ -291,7 +366,7 @@ public class HighlightEmitter {
         else return HighlightCorner.TOP_RIGHT;
     }
 
-    private static @NotNull HighlightCorner getCornerOut(BlockPos torchPos, BlockPos pos, Direction facing) {
+    private static @NotNull HighlightCorner getCornerOut(BlockPos torchPos, BlockPos pos) {
         int relX = pos.getX() - torchPos.getX();
         int relZ = pos.getZ() - torchPos.getZ();
         if (relX >= 0 && relZ < 0) return HighlightCorner.TOP_RIGHT;
