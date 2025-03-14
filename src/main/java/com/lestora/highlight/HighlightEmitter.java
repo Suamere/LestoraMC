@@ -37,10 +37,12 @@ public class HighlightEmitter {
     }
     private static final Set<UUID> torchUUIDs = ConcurrentHashMap.newKeySet();
 
-    public static List<LightEdges> findLightEdges(BlockPos torchPos, Level level) {
-        List<LightEdges> lightEdges = new ArrayList<>();
+    public static LightEdges findLightEdges(BlockPos torchPos, Level level) {
         Queue<Node> queue = new LinkedList<>();
         Set<BlockPos> visited = new HashSet<>();
+
+        List<HighlightEntry> lightLevel1 = new ArrayList<>();
+        List<HighlightEntry> lightLevel0 = new ArrayList<>();
 
         queue.add(new Node(torchPos, 14));
         visited.add(torchPos);
@@ -51,13 +53,12 @@ public class HighlightEmitter {
             int currentLight = current.lightLevel;
 
             if (currentLight > 1) {
-                // Propagate to adjacent transparent positions.
                 for (Direction direction : Direction.values()) {
                     BlockPos neighborPos = currentPos.relative(direction);
                     if (visited.contains(neighborPos)) continue;
 
                     BlockState neighborState = level.getBlockState(neighborPos);
-                    if (!HighlightMemory.isTransparent(neighborState, neighborPos)) continue;
+                    if (!HighlightMemory.isTransparent(neighborState)) continue;
 
                     visited.add(neighborPos);
                     queue.add(new Node(neighborPos, currentLight - 1));
@@ -69,26 +70,101 @@ public class HighlightEmitter {
                 else if (actualLight > 1)
                     continue;
 
-                List<BlockPos> lightLevel0 = new ArrayList<>();
-                for (Direction direction : Direction.values()) {
-                    BlockPos darkNeighbor = currentPos.relative(direction);
-                    var actualNeighborLight = level.getLightEngine().getLayerListener(LightLayer.BLOCK).getLightValue(darkNeighbor);
-                    if (actualNeighborLight == 0)
-                        lightLevel0.add(darkNeighbor);
-                }
-                if (!lightLevel0.isEmpty())
-                    lightEdges.add(new LightEdges(currentPos, lightLevel0));
+                LightEdges thisEdge = processLightEdge(level, currentPos);
+                lightLevel1.addAll(thisEdge.LightLevel1);
+                lightLevel0.addAll(thisEdge.LightLevel0);
             }
         }
 
-        return lightEdges;
+        return new LightEdges(lightLevel1, lightLevel0);
+    }
+
+    private static LightEdges processLightEdge(Level level, BlockPos l1Edge) {
+        List<HighlightEntry> lightLevel1 = new ArrayList<>();
+        List<HighlightEntry> lightLevel0 = new ArrayList<>();
+        for (Direction direction : Direction.values()) {
+            BlockPos neighborPos = l1Edge.relative(direction);
+            BlockState neighborState = level.getBlockState(neighborPos);
+            var neighborFace = HighlightEntry.fromOppositeDirection(direction);
+            if (neighborFace == null) {
+                System.err.println("null from direction: " + direction);
+                continue;
+            }
+
+//            if (!HighlightMemory.isTransparent(neighborState)) {
+            for (Direction sideDir : getAdjacentSides(direction)) {
+                var sidePos = l1Edge.relative(sideDir);
+                var neighborFaceEdge = HighlightEntry.corner(direction, sideDir);
+                var sideLight = level.getLightEngine().getLayerListener(LightLayer.BLOCK).getLightValue(sidePos);
+                if (sideLight == 0){ // Could be solid OR extended beyond the light's reach
+                    var neighborSolid = !HighlightMemory.isTransparent(neighborState);
+                    if (neighborSolid)
+                        lightLevel1.add(new HighlightEntry(neighborPos, HighlightColor.yellow(), neighborFace, neighborFaceEdge));
+
+                    BlockState sideState = level.getBlockState(sidePos);
+                    if (HighlightMemory.isTransparent(sideState)){
+                        var darkEdge = HighlightEntry.corner(direction, oppositeDir(sideDir));
+                        var backOnePos = sidePos.relative(direction);
+                        BlockState backOneState = level.getBlockState(backOnePos);
+                        var backOneSolid = !HighlightMemory.isTransparent(backOneState);
+                        if (backOneSolid) { // backOneBlock is Solid
+                            lightLevel0.add(new HighlightEntry(backOnePos, HighlightColor.black(1.0f), neighborFace, darkEdge));
+                            if (!neighborSolid){
+                                var invertedLightEdge = HighlightEntry.corner(direction, oppositeDir(sideDir));
+                                HighlightFace shiftedBackOneFace = HighlightEntry.shiftFace(neighborFace, darkEdge);
+                                lightLevel0.add(new HighlightEntry(backOnePos, HighlightColor.yellow(), shiftedBackOneFace, invertedLightEdge));
+                            }
+                        }
+                        else if (!backOneSolid && neighborSolid) {
+                            HighlightFace shiftedFace = HighlightEntry.shiftFace(neighborFace, neighborFaceEdge);
+                            lightLevel0.add(new HighlightEntry(neighborPos, HighlightColor.black(1.0f), shiftedFace, darkEdge));
+                        }
+                    }
+                }
+            }
+//            }
+//            else {
+//                for (Direction adjacentEmpty : getAdjacentSides(direction)) {
+//                    var adjEmptyPos = l1Edge.relative(adjacentEmpty);
+//                    var adjLight = level.getLightEngine().getLayerListener(LightLayer.BLOCK).getLightValue(adjEmptyPos);
+//                    if (adjLight == 0) { // Could be solid OR extended beyond the light's reach
+//                    }
+//                }
+//            }
+        }
+        return new LightEdges(lightLevel1, lightLevel0);
+    }
+
+    private static Direction oppositeDir(Direction dir) {
+        return switch (dir) {
+          case UP -> Direction.DOWN;
+          case DOWN -> Direction.UP;
+          case NORTH -> Direction.SOUTH;
+          case SOUTH -> Direction.NORTH;
+          case EAST -> Direction.WEST;
+          case WEST -> Direction.EAST;
+        };
+    }
+
+    private static Direction @NotNull [] getAdjacentSides(Direction direction) {
+        Direction[] sideDirs;
+        switch (direction) {
+            case UP:
+            case DOWN: { sideDirs = new Direction[]{ Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST }; break; }
+            case NORTH:
+            case SOUTH: { sideDirs = new Direction[]{ Direction.UP, Direction.EAST, Direction.DOWN, Direction.WEST }; break; }
+            case EAST:
+            case WEST: { sideDirs = new Direction[]{ Direction.NORTH, Direction.UP, Direction.SOUTH, Direction.DOWN }; break; }
+            default: sideDirs = new Direction[]{};
+        }
+        return sideDirs;
     }
 
     public static class LightEdges {
-        public final BlockPos LightLevel1;
-        public final List<BlockPos> LightLevel0;
+        public final List<HighlightEntry> LightLevel1;
+        public final List<HighlightEntry> LightLevel0;
 
-        public LightEdges(BlockPos lightLevel1, List<BlockPos> lightLevel0) {
+        public LightEdges(List<HighlightEntry> lightLevel1, List<HighlightEntry> lightLevel0) {
             this.LightLevel1 = lightLevel1;
             this.LightLevel0 = lightLevel0;
         }
@@ -140,15 +216,39 @@ public class HighlightEmitter {
             );
             torchUUIDs.add(torchUUID);
             var edges = findLightEdges(torchPos, level);
-            for (var edgePos : edges) {
-                var relativePos = getRelativePosition(torchPos, edgePos.LightLevel1);
-                processInnerHighlight(torchPos, edgePos.LightLevel1, relativePos.x, relativePos.z, level, torchUUID);
-                for (var darkPos : edgePos.LightLevel0) {
-                    // ToDo: MAYBE Check the edges again to see if this spot has light level 1?
-                    var relativeDarkPos = getRelativePosition(edgePos.LightLevel1, darkPos);
-                    processOuterHighlight(edgePos.LightLevel1, darkPos, relativeDarkPos.x, relativeDarkPos.z, level, torchUUID);
-                }
+            for (var ll0 : edges.LightLevel0) {
+                HighlightMemory.add(torchUUID, ll0);
             }
+            for (var ll1 : edges.LightLevel1) {
+                HighlightMemory.add(torchUUID, ll1);
+            }
+
+//            for (var edgePos : edges) {
+//                for (var darkPos : edgePos.LightLevel0) {
+//                    var relativeLightPos = getRelativePosition(darkPos, edgePos.LightLevel1);
+//                    var c1 = HighlightCorner.BOTTOM_RIGHT;
+//                    var c2 = HighlightCorner.BOTTOM_RIGHT;
+//
+//                    if (relativeLightPos.x == 1){
+//                        c1 = HighlightCorner.RIGHT;
+//                        c2 = HighlightCorner.LEFT;
+//                    }
+//                    else if (relativeLightPos.x == -1){
+//                        c1 = HighlightCorner.LEFT;
+//                        c2 = HighlightCorner.RIGHT;
+//                    }
+//                    else if (relativeLightPos.z == 1){
+//                        c1 = HighlightCorner.DOWN;
+//                        c2 = HighlightCorner.UP;
+//                    }
+//                    else if (relativeLightPos.z == -1){
+//                        c1 = HighlightCorner.UP;
+//                        c2 = HighlightCorner.DOWN;
+//                    }
+//                    HighlightMemory.add(torchUUID, new HighlightEntry(edgePos.LightLevel1, HighlightColor.yellow(), HighlightFace.UP, c1));
+//                    HighlightMemory.add(torchUUID, new HighlightEntry(darkPos, HighlightColor.black(1.0f), HighlightFace.UP, c2));
+//                }
+//            }
         }
     }
 

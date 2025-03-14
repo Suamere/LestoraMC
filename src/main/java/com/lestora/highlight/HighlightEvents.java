@@ -1,7 +1,13 @@
 package com.lestora.highlight;
 
+import com.lestora.common.DebugOverlay;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -47,7 +53,6 @@ public class HighlightEvents {
             Minecraft.getInstance().execute(() -> action.accept(level, config));
         }, 200, TimeUnit.MILLISECONDS);
     }
-
 
     @SubscribeEvent
     public static void onKeyInput(InputEvent.Key event) {

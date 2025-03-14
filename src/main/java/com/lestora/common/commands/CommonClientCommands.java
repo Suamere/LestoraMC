@@ -22,15 +22,15 @@ public class CommonClientCommands {
     }
 
     private static void registerShowDebug(LiteralArgumentBuilder<CommandSourceStack> root) {
-        root.then(Commands.literal("showDebug")
+        root.then(Commands.literal("enableF3")
                 .executes(ctx -> {
-                    DebugOverlay.setShowDebug(true);
+                    DebugOverlay.setF3Disabled(false);
                     return 1;
                 })
                 .then(Commands.argument("value", BoolArgumentType.bool())
                         .executes(ctx -> {
                             boolean value = BoolArgumentType.getBool(ctx, "value");
-                            DebugOverlay.setShowDebug(value);
+                            DebugOverlay.setF3Disabled(!value);
                             return 1;
                         })
                 )

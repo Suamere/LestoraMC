@@ -36,6 +36,9 @@ public class LestoraPlayer {
     //public static final Logger LOGGER = LogManager.getLogger("lestora");
 
     private Player mcPlayer;
+    public Player getMcPlayer() {
+        return mcPlayer;
+    }
     private UUID uuid;
     private EntityBlockInfo supportingBlock;
     private Wetness wetness = Wetness.DRY;
@@ -67,6 +70,10 @@ public class LestoraPlayer {
         return Collections.unmodifiableMap(players);
     }
     private ClientLevel level;
+    public ClientLevel getLevel() {
+        return level;
+    }
+
     private int swimLevel;
 
     private LestoraPlayer(Player player) {

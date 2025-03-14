@@ -75,7 +75,7 @@ public class HighlightMemory {
         return false;
     }
 
-    public static boolean isTransparent(BlockState blockState, BlockPos blockPos) {
+    public static boolean isTransparent(BlockState blockState) {
         if (blockState.getLightBlock() == 0) return true;
         if (blockState.getBlock() == Blocks.AIR || blockState.getBlock() == Blocks.CAVE_AIR) return true;
         if (blockState.getBlock() == Blocks.WATER) return true;
