@@ -135,8 +135,6 @@ public class HighlightEmitter {
         List<HighlightEntry> lightLevel1 = new ArrayList<>();
         List<HighlightEntry> lightLevel0 = new ArrayList<>();
 
-        //if (!l1Edge.equals(Minecraft.getInstance().player.blockPosition())) return new LightEdges(lightLevel1, lightLevel0);
-
         for (Direction direction : Direction.values()) {
             BlockPos neighborPos = l1Edge.relative(direction);
             BlockState neighborState = level.getBlockState(neighborPos);
@@ -149,10 +147,7 @@ public class HighlightEmitter {
                     var adjLightLevel = level.getLightEngine().getLayerListener(LightLayer.BLOCK).getLightValue(lightAdjPos);
                     if (adjLightLevel == 0) {
                         var lightEdge = HighlightEntry.corner(direction, lightAdjDir);
-                        //if (neighborFace == HighlightFace.UP) {
-                            lightLevel1.add(new HighlightEntry(neighborPos, HighlightColor.yellow(), neighborFace, lightEdge));
-                            //System.err.println("Draw Yellow at: " + neighborPos + " -- On Face: " + neighborFace + " -- On Edge: " + lightEdge);
-                        //}
+                        lightLevel1.add(new HighlightEntry(neighborPos, HighlightColor.yellow(), neighborFace, lightEdge));
                     }
                 }
             }
@@ -166,9 +161,8 @@ public class HighlightEmitter {
                         if (darkSolid) {
                             HighlightFace darkFace = HighlightEntry.fromOppositeDirection(darkDirection);
                             if (darkFace == null) { System.err.println("null from direction: " + darkDirection); continue; }
-
-                            lightLevel0.add(new HighlightEntry(darkPos, HighlightColor.black(0.5f), darkFace, HighlightCorner.TOP_LEFT));
-                            lightLevel0.add(new HighlightEntry(darkPos, HighlightColor.black(0.5f), darkFace, HighlightCorner.BOTTOM_RIGHT));
+                            var darkEdge = HighlightEntry.corner(darkDirection, oppositeDir(direction));
+                            lightLevel0.add(new HighlightEntry(darkPos, HighlightColor.black(0.5f), darkFace, darkEdge));
                         } else {
                             var adjLight = level.getLightEngine().getLayerListener(LightLayer.BLOCK).getLightValue(darkPos);
                             if (adjLight == 0){
@@ -178,9 +172,8 @@ public class HighlightEmitter {
                                 if (adjSolid) {
                                     HighlightFace adjFace = HighlightEntry.fromDirection(direction);
                                     if (adjFace == null) { System.err.println("null from direction: " + direction); continue; }
-
-                                    lightLevel0.add(new HighlightEntry(adjPos, HighlightColor.black(0.5f), adjFace, HighlightCorner.TOP_LEFT));
-                                    lightLevel0.add(new HighlightEntry(adjPos, HighlightColor.black(0.5f), adjFace, HighlightCorner.BOTTOM_RIGHT));
+                                    var adjEdge = HighlightEntry.corner(oppositeDir(direction), oppositeDir(darkDirection));
+                                    lightLevel0.add(new HighlightEntry(adjPos, HighlightColor.black(0.5f), adjFace, adjEdge));
                                 }
                             }
                         }
