@@ -76,7 +76,6 @@ public abstract class LevelRendererMixin {
         for (var entry : highlights) {
             if (entry.face == null) continue;
             BlockPos pos = entry.pos;
-
             // Retrieve color components from the entry, scaled to [0, 255].
             int red   = (int) (entry.color.getRed()   * 255);
             int green = (int) (entry.color.getGreen() * 255);
@@ -84,16 +83,28 @@ public abstract class LevelRendererMixin {
             int alpha = (int) (entry.color.getAlpha() * 255);
 
             float[] arr = switch(entry.corner) {
-                // Corner arrows: tip is the given corner; base are the two adjacent corners (excluding the opposite)
+                // For non-diagonals, choose the adjacent points differently for EAST and WEST faces.
+                case UP    -> Combine(entry.face, PointLocation.MiddleMiddle, PointLocation.BottomRight, PointLocation.BottomLeft);
+                case DOWN  -> Combine(entry.face, PointLocation.MiddleMiddle, PointLocation.TopLeft, PointLocation.TopRight);
+                case LEFT  -> {
+                    if (entry.face == HighlightFace.EAST || entry.face == HighlightFace.WEST) {
+                        yield Combine(entry.face, PointLocation.MiddleMiddle, PointLocation.TopLeft, PointLocation.BottomLeft);
+                    } else {
+                        yield Combine(entry.face, PointLocation.MiddleMiddle, PointLocation.TopRight, PointLocation.BottomRight);
+                    }
+                }
+                case RIGHT -> {
+                    if (entry.face == HighlightFace.EAST || entry.face == HighlightFace.WEST) {
+                        yield Combine(entry.face, PointLocation.MiddleMiddle, PointLocation.TopRight, PointLocation.BottomRight);
+                    } else {
+                        yield Combine(entry.face, PointLocation.MiddleMiddle, PointLocation.TopLeft, PointLocation.BottomLeft);
+                    }
+                }
+                // For corners, keep your existing logic.
                 case TOP_LEFT     -> Combine(entry.face, PointLocation.TopLeft, PointLocation.BottomLeft, PointLocation.TopRight);
                 case TOP_RIGHT    -> Combine(entry.face, PointLocation.TopRight, PointLocation.TopLeft, PointLocation.BottomRight);
                 case BOTTOM_LEFT  -> Combine(entry.face, PointLocation.BottomLeft, PointLocation.TopLeft, PointLocation.BottomRight);
                 case BOTTOM_RIGHT -> Combine(entry.face, PointLocation.BottomRight, PointLocation.BottomLeft, PointLocation.TopRight);
-                // Simple arrows: tip is at the center; base is along the opposite edge.
-                case UP           -> Combine(entry.face, PointLocation.MiddleMiddle, PointLocation.BottomLeft, PointLocation.BottomRight);
-                case DOWN         -> Combine(entry.face, PointLocation.MiddleMiddle, PointLocation.TopLeft, PointLocation.TopRight);
-                case LEFT         -> Combine(entry.face, PointLocation.MiddleMiddle, PointLocation.TopRight, PointLocation.BottomRight);
-                case RIGHT        -> Combine(entry.face, PointLocation.MiddleMiddle, PointLocation.TopLeft, PointLocation.BottomLeft);
             };
             buffer.addVertex(matrix, pos.getX() + arr[0], pos.getY() + arr[1], pos.getZ() + arr[2]).setColor(red, green, blue, alpha);
             buffer.addVertex(matrix, pos.getX() + arr[3], pos.getY() + arr[4], pos.getZ() + arr[5]).setColor(red, green, blue, alpha);
@@ -141,6 +152,7 @@ public abstract class LevelRendererMixin {
     private static float[] getPoint(HighlightFace face, PointLocation loc) {
         return switch(face) {
             case SOUTH -> switch(loc) {
+                // (constant Z=1) 2D coords are (x, y)
                 case TopLeft -> new float[]{0f, 1f}; case TopRight -> new float[]{1f, 1f};
                 case BottomLeft -> new float[]{0f, 0f}; case BottomRight -> new float[]{1f, 0f};
                 case TopMiddle -> new float[]{0.5f, 1f}; case LeftMiddle -> new float[]{0f, 0.5f};
@@ -148,7 +160,7 @@ public abstract class LevelRendererMixin {
                 case MiddleMiddle -> new float[]{0.5f, 0.5f};
             };
             case NORTH -> switch(loc) {
-                // For NORTH face, we mirror the X axis (i.e. u = 1 - x)
+                // (constant Z=0) 2D coords are (x, y), but x is mirrored
                 case TopLeft -> new float[]{1f, 1f}; case TopRight -> new float[]{0f, 1f};
                 case BottomLeft -> new float[]{1f, 0f}; case BottomRight -> new float[]{0f, 0f};
                 case TopMiddle -> new float[]{0.5f, 1f}; case LeftMiddle -> new float[]{1f, 0.5f};
@@ -156,23 +168,23 @@ public abstract class LevelRendererMixin {
                 case MiddleMiddle -> new float[]{0.5f, 0.5f};
             };
             case EAST -> switch(loc) {
-                // For EAST face (constant X=1), free coords: (z, y), with left = north (z=0)
-                case TopLeft -> new float[]{0f, 1f}; case TopRight -> new float[]{1f, 1f};
-                case BottomLeft -> new float[]{0f, 0f}; case BottomRight -> new float[]{1f, 0f};
-                case TopMiddle -> new float[]{0.5f, 1f}; case LeftMiddle -> new float[]{0f, 0.5f};
-                case BottomMiddle -> new float[]{0.5f, 0f}; case RightMiddle -> new float[]{1f, 0.5f};
+                // (constant X=0), 2D coords are (y, z)
+                case TopLeft -> new float[]{1f, 0f}; case TopRight -> new float[]{1f, 1f};
+                case BottomLeft -> new float[]{0f, 0f}; case BottomRight -> new float[]{0f, 1f};
+                case TopMiddle -> new float[]{1f, 0.5f}; case LeftMiddle -> new float[]{0.5f, 0f};
+                case BottomMiddle -> new float[]{0f, 0.5f}; case RightMiddle -> new float[]{0.5f, 1f};
                 case MiddleMiddle -> new float[]{0.5f, 0.5f};
             };
             case WEST -> switch(loc) {
-                // For WEST face (constant X=0), free coords: (z, y), but when facing EAST, left becomes south (z=1)
-                case TopLeft -> new float[]{1f, 1f}; case TopRight -> new float[]{0f, 1f};
-                case BottomLeft -> new float[]{1f, 0f}; case BottomRight -> new float[]{0f, 0f};
-                case TopMiddle -> new float[]{0.5f, 1f}; case LeftMiddle -> new float[]{1f, 0.5f};
-                case BottomMiddle -> new float[]{0.5f, 0f}; case RightMiddle -> new float[]{0f, 0.5f};
+                // (constant X=1) 2D coords are (y, z), but z is mirrored
+                case TopLeft -> new float[]{1f, 1f}; case TopRight -> new float[]{1f, 0f};
+                case BottomLeft -> new float[]{0f, 1f}; case BottomRight -> new float[]{0f, 0f};
+                case TopMiddle -> new float[]{1f, 0.5f}; case LeftMiddle -> new float[]{0.5f, 1f};
+                case BottomMiddle -> new float[]{0f, 0.5f}; case RightMiddle -> new float[]{0.5f, 0f};
                 case MiddleMiddle -> new float[]{0.5f, 0.5f};
             };
             case UP -> switch(loc) {
-                // For UP face (constant Y=1), free coords: (x, z), with player's facing north so top = north (z=0) & left = west (x=0)
+                // (constant Y=1), 2D coords are (x, z)
                 case TopLeft -> new float[]{0f, 0f}; case TopRight -> new float[]{1f, 0f};
                 case BottomLeft -> new float[]{0f, 1f}; case BottomRight -> new float[]{1f, 1f};
                 case TopMiddle -> new float[]{0.5f, 0f}; case LeftMiddle -> new float[]{0f, 0.5f};
@@ -180,7 +192,7 @@ public abstract class LevelRendererMixin {
                 case MiddleMiddle -> new float[]{0.5f, 0.5f};
             };
             case DOWN -> switch(loc) {
-                // For DOWN face (constant Y=0), free coords: (x, z) but now top = south (z=1) since player's looking up from the north.
+                // (constant Y=0), 2D coords are (x, z), but z is mirrored.
                 case TopLeft -> new float[]{0f, 1f}; case TopRight -> new float[]{1f, 1f};
                 case BottomLeft -> new float[]{0f, 0f}; case BottomRight -> new float[]{1f, 0f};
                 case TopMiddle -> new float[]{0.5f, 1f}; case LeftMiddle -> new float[]{0f, 0.5f};

@@ -34,9 +34,22 @@ public class DebugOverlay {
             BlockPos playerPos = player.blockPosition();
             return playerPos.getX() + ", " + playerPos.getY() + ", " + playerPos.getZ();
         });
+        registerDebugLine("Facing", lestoraPlayer -> {
+            Player player = lestoraPlayer.getMcPlayer();
+            float adjustedYaw = (player.getYRot() + 180) % 360;
+            if (adjustedYaw < 0)
+                adjustedYaw += 360;
+            String[] directions = {
+                    "North", "North East", "East", "South East",
+                    "South", "South West", "West", "North West"
+            };
+
+            int index = (int)((adjustedYaw + 22.5) / 45) % 8;
+            return directions[index];
+        });
         registerDebugLine("Light Level", lestoraPlayer -> {
             Player player = lestoraPlayer.getMcPlayer();
-            BlockPos playerPos = player.blockPosition();
+            var playerPos = player.blockPosition();
             return String.valueOf(player.level().getLightEngine().getLayerListener(LightLayer.BLOCK).getLightValue(playerPos));
         });
     }

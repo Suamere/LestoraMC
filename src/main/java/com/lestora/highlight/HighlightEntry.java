@@ -25,8 +25,8 @@ public class HighlightEntry {
         this.corner = null;
     }
 
-    public static HighlightEntry Whole(BlockPos neighborPos, HighlightColor red) {
-        return new HighlightEntry(neighborPos, red);
+    public static HighlightEntry Whole(BlockPos blockPos, HighlightColor color) {
+        return new HighlightEntry(blockPos, color);
     }
 
     public static HighlightFace fromOppositeDirection(Direction dir) {
@@ -37,6 +37,17 @@ public class HighlightEntry {
             case NORTH -> HighlightFace.SOUTH;
             case EAST -> HighlightFace.WEST;
             case WEST -> HighlightFace.EAST;
+        };
+    }
+
+    public static HighlightFace fromDirection(Direction dir) {
+        return switch (dir) {
+            case UP -> HighlightFace.UP;
+            case DOWN -> HighlightFace.DOWN;
+            case SOUTH -> HighlightFace.SOUTH;
+            case NORTH -> HighlightFace.NORTH;
+            case EAST -> HighlightFace.EAST;
+            case WEST -> HighlightFace.WEST;
         };
     }
 

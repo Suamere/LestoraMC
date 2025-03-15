@@ -1,5 +1,6 @@
 package com.lestora.highlight;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Player;
@@ -79,70 +80,139 @@ public class HighlightEmitter {
         return new LightEdges(lightLevel1, lightLevel0);
     }
 
-    private static LightEdges processLightEdge(Level level, BlockPos l1Edge) {
+    private static LightEdges processLightEdgeV1(Level level, BlockPos l1Edge) {
         List<HighlightEntry> lightLevel1 = new ArrayList<>();
         List<HighlightEntry> lightLevel0 = new ArrayList<>();
         for (Direction direction : Direction.values()) {
             BlockPos neighborPos = l1Edge.relative(direction);
             BlockState neighborState = level.getBlockState(neighborPos);
-            var neighborFace = HighlightEntry.fromOppositeDirection(direction);
-            if (neighborFace == null) {
-                System.err.println("null from direction: " + direction);
-                continue;
-            }
+            boolean neighborSolid = !HighlightMemory.isTransparent(neighborState);
 
-//            if (!HighlightMemory.isTransparent(neighborState)) {
+            // The face of the neighbor block that faces toward the l1Edge position
+            HighlightFace neighborFace = HighlightEntry.fromOppositeDirection(direction);
+            if (neighborFace == null) { System.err.println("null from direction: " + direction); continue; }
+
             for (Direction sideDir : getAdjacentSides(direction)) {
                 var sidePos = l1Edge.relative(sideDir);
-                var neighborFaceEdge = HighlightEntry.corner(direction, sideDir);
+                var sideDirIsSolid = !HighlightMemory.isTransparent(level.getBlockState(sidePos));
                 var sideLight = level.getLightEngine().getLayerListener(LightLayer.BLOCK).getLightValue(sidePos);
-                if (sideLight == 0){ // Could be solid OR extended beyond the light's reach
-                    var neighborSolid = !HighlightMemory.isTransparent(neighborState);
-                    if (neighborSolid)
+
+                if (sideLight == 0) { // Could be solid OR extended beyond the light's reach
+                    // The "corner" (arrow) that would have its BASE against the edge of the Neighbor Face in the direction of the sideDir
+                    HighlightCorner neighborFaceEdge = HighlightEntry.corner(direction, sideDir);
+                    if (neighborSolid) // If the neighbor is solid, draw on its face toward the currently known "dark side" (sidePos)
                         lightLevel1.add(new HighlightEntry(neighborPos, HighlightColor.yellow(), neighborFace, neighborFaceEdge));
 
-                    BlockState sideState = level.getBlockState(sidePos);
-                    if (HighlightMemory.isTransparent(sideState)){
+                    if (!sideDirIsSolid) { // if the sideDir is NOT a solid block (air/water)
                         var darkEdge = HighlightEntry.corner(direction, oppositeDir(sideDir));
                         var backOnePos = sidePos.relative(direction);
                         BlockState backOneState = level.getBlockState(backOnePos);
                         var backOneSolid = !HighlightMemory.isTransparent(backOneState);
+
                         if (backOneSolid) { // backOneBlock is Solid
                             lightLevel0.add(new HighlightEntry(backOnePos, HighlightColor.black(1.0f), neighborFace, darkEdge));
                             if (!neighborSolid){
                                 var invertedLightEdge = HighlightEntry.corner(direction, oppositeDir(sideDir));
-                                HighlightFace shiftedBackOneFace = HighlightEntry.shiftFace(neighborFace, darkEdge);
+                                HighlightFace shiftedBackOneFace = HighlightEntry.shiftFace(neighborFace, oppositeDir(darkEdge));
                                 lightLevel0.add(new HighlightEntry(backOnePos, HighlightColor.yellow(), shiftedBackOneFace, invertedLightEdge));
                             }
                         }
                         else if (!backOneSolid && neighborSolid) {
-                            HighlightFace shiftedFace = HighlightEntry.shiftFace(neighborFace, neighborFaceEdge);
+                            var dirToShift = oppositeDir(neighborFaceEdge); // Because neighborFaceEdge might be "Left", but that really means an arrow on the Right that POINTS left.
+                            // So what I really want is the idea of "Right", to shift to the right, because it's an arrow pointing to the left.  So it needs to flip.
+
+                            HighlightFace shiftedFace = HighlightEntry.shiftFace(neighborFace, dirToShift);
                             lightLevel0.add(new HighlightEntry(neighborPos, HighlightColor.black(1.0f), shiftedFace, darkEdge));
                         }
                     }
                 }
             }
-//            }
-//            else {
-//                for (Direction adjacentEmpty : getAdjacentSides(direction)) {
-//                    var adjEmptyPos = l1Edge.relative(adjacentEmpty);
-//                    var adjLight = level.getLightEngine().getLayerListener(LightLayer.BLOCK).getLightValue(adjEmptyPos);
-//                    if (adjLight == 0) { // Could be solid OR extended beyond the light's reach
-//                    }
-//                }
-//            }
         }
         return new LightEdges(lightLevel1, lightLevel0);
     }
 
+    private static LightEdges processLightEdge(Level level, BlockPos l1Edge) {
+        List<HighlightEntry> lightLevel1 = new ArrayList<>();
+        List<HighlightEntry> lightLevel0 = new ArrayList<>();
+
+        //if (!l1Edge.equals(Minecraft.getInstance().player.blockPosition())) return new LightEdges(lightLevel1, lightLevel0);
+
+        for (Direction direction : Direction.values()) {
+            BlockPos neighborPos = l1Edge.relative(direction);
+            BlockState neighborState = level.getBlockState(neighborPos);
+            boolean neighborSolid = !HighlightMemory.isTransparent(neighborState);
+            if (neighborSolid) {
+                HighlightFace neighborFace = HighlightEntry.fromOppositeDirection(direction);
+                if (neighborFace == null) { System.err.println("null from direction: " + direction); continue; }
+                for (Direction lightAdjDir : getAdjacentSides(direction)) {
+                    BlockPos lightAdjPos = l1Edge.relative(lightAdjDir);
+                    var adjLightLevel = level.getLightEngine().getLayerListener(LightLayer.BLOCK).getLightValue(lightAdjPos);
+                    if (adjLightLevel == 0) {
+                        var lightEdge = HighlightEntry.corner(direction, lightAdjDir);
+                        //if (neighborFace == HighlightFace.UP) {
+                            lightLevel1.add(new HighlightEntry(neighborPos, HighlightColor.yellow(), neighborFace, lightEdge));
+                            //System.err.println("Draw Yellow at: " + neighborPos + " -- On Face: " + neighborFace + " -- On Edge: " + lightEdge);
+                        //}
+                    }
+                }
+            }
+            else {
+                var sideLight = level.getLightEngine().getLayerListener(LightLayer.BLOCK).getLightValue(neighborPos);
+                if (sideLight == 0){
+                    for (Direction darkDirection : getAdjacentSides(direction)) {
+                        BlockPos darkPos = neighborPos.relative(darkDirection);
+                        BlockState darkState = level.getBlockState(darkPos);
+                        boolean darkSolid = !HighlightMemory.isTransparent(darkState);
+                        if (darkSolid) {
+                            HighlightFace darkFace = HighlightEntry.fromOppositeDirection(darkDirection);
+                            if (darkFace == null) { System.err.println("null from direction: " + darkDirection); continue; }
+
+                            lightLevel0.add(new HighlightEntry(darkPos, HighlightColor.black(0.5f), darkFace, HighlightCorner.TOP_LEFT));
+                            lightLevel0.add(new HighlightEntry(darkPos, HighlightColor.black(0.5f), darkFace, HighlightCorner.BOTTOM_RIGHT));
+                        } else {
+                            var adjLight = level.getLightEngine().getLayerListener(LightLayer.BLOCK).getLightValue(darkPos);
+                            if (adjLight == 0){
+                                BlockPos adjPos = darkPos.relative(oppositeDir(direction));
+                                BlockState adjState = level.getBlockState(adjPos);
+                                boolean adjSolid = !HighlightMemory.isTransparent(adjState);
+                                if (adjSolid) {
+                                    HighlightFace adjFace = HighlightEntry.fromDirection(direction);
+                                    if (adjFace == null) { System.err.println("null from direction: " + direction); continue; }
+
+                                    lightLevel0.add(new HighlightEntry(adjPos, HighlightColor.black(0.5f), adjFace, HighlightCorner.TOP_LEFT));
+                                    lightLevel0.add(new HighlightEntry(adjPos, HighlightColor.black(0.5f), adjFace, HighlightCorner.BOTTOM_RIGHT));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return new LightEdges(lightLevel1, lightLevel0);
+    }
+
+    private static HighlightCorner oppositeDir(HighlightCorner dir) {
+        return switch (dir) {
+            case UP -> HighlightCorner.DOWN;
+            case DOWN -> HighlightCorner.UP;
+            case LEFT -> HighlightCorner.RIGHT;
+            case RIGHT -> HighlightCorner.LEFT;
+            case TOP_LEFT -> HighlightCorner.BOTTOM_RIGHT;
+            case TOP_RIGHT -> HighlightCorner.BOTTOM_LEFT;
+            case BOTTOM_LEFT -> HighlightCorner.TOP_RIGHT;
+            case BOTTOM_RIGHT -> HighlightCorner.TOP_LEFT;
+        };
+    }
+
     private static Direction oppositeDir(Direction dir) {
         return switch (dir) {
-          case UP -> Direction.DOWN;
-          case DOWN -> Direction.UP;
-          case NORTH -> Direction.SOUTH;
-          case SOUTH -> Direction.NORTH;
-          case EAST -> Direction.WEST;
-          case WEST -> Direction.EAST;
+            case UP -> Direction.DOWN;
+            case DOWN -> Direction.UP;
+            case NORTH -> Direction.SOUTH;
+            case SOUTH -> Direction.NORTH;
+            case EAST -> Direction.WEST;
+            case WEST -> Direction.EAST;
         };
     }
 
