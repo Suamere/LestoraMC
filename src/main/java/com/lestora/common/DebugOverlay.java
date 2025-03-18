@@ -2,7 +2,6 @@ package com.lestora.common;
 
 import com.google.common.base.Function;
 import com.lestora.common.models.LestoraPlayer;
-import com.lestora.highlight.HighlightEmitter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;

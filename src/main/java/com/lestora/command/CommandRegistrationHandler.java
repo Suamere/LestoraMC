@@ -20,6 +20,7 @@ public class CommandRegistrationHandler {
         var root = Commands.literal("lestora");
 
         registerSetLevels(root);
+        registerEnableAI(root);
 
         event.getDispatcher().register(root);
     }
@@ -38,7 +39,7 @@ public class CommandRegistrationHandler {
         );
     }
 
-    private static void enableAI(LiteralArgumentBuilder<CommandSourceStack> root) {
+    private static void registerEnableAI(LiteralArgumentBuilder<CommandSourceStack> root) {
         root.then(Commands.literal("enableAI")
             .executes(context -> {
                 AIEvent.enableAI = true;

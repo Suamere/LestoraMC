@@ -1,7 +1,7 @@
-package com.lestora.highlight.mixin;
+package com.lestora.dummydebug.mixin;
 
 import com.lestora.common.DebugOverlay;
-import com.lestora.highlight.DummyDebugScreenOverlay;
+import com.lestora.dummydebug.DummyDebugScreenOverlay;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.DebugScreenOverlay;
 import org.spongepowered.asm.mixin.Mixin;

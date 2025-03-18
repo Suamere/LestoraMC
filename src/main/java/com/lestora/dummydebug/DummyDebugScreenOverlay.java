@@ -1,4 +1,4 @@
-package com.lestora.highlight;
+package com.lestora.dummydebug;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
