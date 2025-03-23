@@ -1,7 +1,9 @@
 package com.lestora.event;
 
+import com.lestora.OrientationHelper;
 import com.lestora.common.models.LestoraPlayer;
 import com.lestora.common.models.LestoraVillager;
+import com.lestora.keybind.KeybindHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -21,6 +23,9 @@ public class EventSubscribor {
         var clientPlayer = Minecraft.getInstance().player;
         if (clientPlayer != null) {
             LestoraPlayer.get(clientPlayer).calc(clientPlayer);
+        }
+        if (KeybindHandler.snapKey.consumeClick()) {
+            OrientationHelper.snapPlayerOrientation(clientPlayer);
         }
     }
 }

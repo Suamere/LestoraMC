@@ -5,8 +5,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.lestora.common.DebugOverlay;
 import com.lestora.common.data.PlayerRepo;
+import com.lestora.debug.DebugOverlay;
+import com.lestora.debug.models.DebugObject;
+import com.lestora.debug.models.DebugSupplier;
 import com.lestora.event.ConfigBiomeTempEventHandler;
 import com.lestora.wetness.Wetness;
 import com.lestora.wetness.WetnessUtil;
@@ -57,13 +59,43 @@ public class LestoraPlayer {
     private static final Map<UUID, LestoraPlayer> players = new HashMap<>();
 
     static {
-        DebugOverlay.registerDebugLine("Wetness", lP -> lP.getWetness().toString());
-        DebugOverlay.registerDebugLine("Body Temp", lP -> String.valueOf(lP.getBodyTemp()));
-        DebugOverlay.registerDebugLine("Swim Level", lP -> String.valueOf(lP.getSwimLevel()));
-        DebugOverlay.registerDebugLine("Supporting Block", lP -> {
-            var supportPos = lP.getSupportingBlock();
-            return StandingBlockUtil.getSupportingBlockType(supportPos) + " " + supportPos.getSupportingPos();
+        var wetnessSupplier = new DebugSupplier("Lestora_Wetness", 10, () -> {
+           var lp = LestoraPlayer.get(Minecraft.getInstance().player);
+           var wet = lp.getWetness().toString();
+           var color = 9498256;
+           return new DebugObject("Wet", color, false, wet, color, false,
+                              "Wetness", color, true, wet, color, true);
         });
+        DebugOverlay.registerDebugLine(wetnessSupplier.getKey(), wetnessSupplier);
+
+        var bodyTempSupplier = new DebugSupplier("Lestora_BodyTemp", 9, () -> {
+            var lp = LestoraPlayer.get(Minecraft.getInstance().player);
+            var bodyTemp = lp.getBodyTemp();
+            var temp = String.valueOf(lp.getBodyTemp());
+            int color = bodyTemp > 120 ? 16711680 : (bodyTemp < 60 ? 255 : 16776960);
+            return new DebugObject("Temp", color, false, temp, color, false,
+                              "Body Temp", color, true, temp, color, true);
+        });
+        DebugOverlay.registerDebugLine(bodyTempSupplier.getKey(), bodyTempSupplier);
+
+        var swimLevelSupplier = new DebugSupplier("Lestora_Level_Swim", 8, () -> {
+            var lp = LestoraPlayer.get(Minecraft.getInstance().player);
+            var swim = String.valueOf(lp.getSwimLevel());
+            var color = 15792383;
+            return new DebugObject("Swim", color, false, swim, color, false,
+                    "Swim Level", color, true, swim, color, true);
+        });
+        DebugOverlay.registerDebugLine(swimLevelSupplier.getKey(), swimLevelSupplier);
+
+        var supportSupplier = new DebugSupplier("Lestora_Support", 7, () -> {
+            var lp = LestoraPlayer.get(Minecraft.getInstance().player);
+            var supportPos = lp.getSupportingBlock();
+            var support = StandingBlockUtil.getSupportingBlockType(supportPos) + " " + supportPos.getSupportingPos();
+            var color = 16777215;
+            return new DebugObject("Supt", color, false, StandingBlockUtil.getSupportingBlockType(supportPos), color, false,
+                    "Supporting Block", color, true, support, color, true);
+        });
+        DebugOverlay.registerDebugLine(supportSupplier.getKey(), supportSupplier);
     }
 
     public static Map<UUID, LestoraPlayer> getPlayers() {

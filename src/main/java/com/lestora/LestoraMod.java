@@ -12,7 +12,6 @@ public class LestoraMod {
     //public static final Logger LOGGER = LogManager.getLogger("lestora");
 
     public LestoraMod(FMLJavaModLoadingContext constructContext) {
-        System.err.println("Mistral WUT!?");
         SQLiteManager.init();
 //        LoggerContext context = (LoggerContext) LogManager.getContext(false);
 //        Configuration config = context.getConfiguration();
@@ -30,7 +29,6 @@ public class LestoraMod {
 //        context.updateLoggers();
 
         constructContext.registerConfig(ModConfig.Type.COMMON, ConfigBiomeTemp.BIOME_CONFIG, "lestora-biome.toml");
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(this);
         AIRequestThread.startBackgroundProcessing();
     }
 
