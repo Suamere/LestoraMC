@@ -74,10 +74,10 @@ public class ConfigBiomeTemp {
                                 "minecraft:wooded_badlands=1.5",
                                 "minecraft:badlands=1.8",
                                 "minecraft:desert=1.8",
-                                "minecraft:basalt_deltas=3.0",
+                                "minecraft:basalt_deltas=2.0",
                                 "minecraft:crimson_forest=1.8",
                                 "minecraft:nether_wastes=2.0",
-                                "minecraft:soul_sand_valley=-1.0", // Odd choice, but let's make it cold in a Soul Sand Valley?  Lol
+                                "minecraft:soul_sand_valley=-0.5", // Odd choice, but let's make it cold in a Soul Sand Valley?  Lol
                                 "minecraft:warped_forest=1.8"
                         ),
                         o -> o instanceof String && ((String) o).contains("="));

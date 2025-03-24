@@ -20,6 +20,20 @@ versionRange="[1.0.1,)"
 ordering="NONE"
 side="BOTH"
 
+[[dependencies.lestora_block_support]]
+modId="lestora_block_support"
+mandatory=true
+versionRange="[1.0.1,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.lestora_wetness]]
+modId="lestora_wetness"
+mandatory=true
+versionRange="[1.0.0,)"
+ordering="NONE"
+side="BOTH"
+
 [[dependencies.${mod_id}]]
     modId="forge"
     mandatory=true

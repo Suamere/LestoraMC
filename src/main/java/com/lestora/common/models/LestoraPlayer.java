@@ -5,13 +5,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.lestora.blocksupport.models.SupportBlock;
 import com.lestora.common.data.PlayerRepo;
 import com.lestora.debug.DebugOverlay;
 import com.lestora.debug.models.DebugObject;
 import com.lestora.debug.models.DebugSupplier;
 import com.lestora.event.ConfigBiomeTempEventHandler;
-import com.lestora.wetness.Wetness;
-import com.lestora.wetness.WetnessUtil;
+import com.lestora.wetness.models.Wetness;
+import com.lestora.wetness.models.WetnessUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -26,6 +27,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -38,14 +40,8 @@ public class LestoraPlayer {
     //public static final Logger LOGGER = LogManager.getLogger("lestora");
 
     private Player mcPlayer;
-    public Player getMcPlayer() {
-        return mcPlayer;
-    }
     private UUID uuid;
-    private EntityBlockInfo supportingBlock;
-    private Wetness wetness = Wetness.DRY;
     private Biome biome;
-    private boolean lastBlockSolid;
     private float bodyTemp = 98f;
 
     // Timers in seconds
@@ -59,15 +55,6 @@ public class LestoraPlayer {
     private static final Map<UUID, LestoraPlayer> players = new HashMap<>();
 
     static {
-        var wetnessSupplier = new DebugSupplier("Lestora_Wetness", 10, () -> {
-           var lp = LestoraPlayer.get(Minecraft.getInstance().player);
-           var wet = lp.getWetness().toString();
-           var color = 9498256;
-           return new DebugObject("Wet", color, false, wet, color, false,
-                              "Wetness", color, true, wet, color, true);
-        });
-        DebugOverlay.registerDebugLine(wetnessSupplier.getKey(), wetnessSupplier);
-
         var bodyTempSupplier = new DebugSupplier("Lestora_BodyTemp", 9, () -> {
             var lp = LestoraPlayer.get(Minecraft.getInstance().player);
             var bodyTemp = lp.getBodyTemp();
@@ -86,16 +73,6 @@ public class LestoraPlayer {
                     "Swim Level", color, true, swim, color, true);
         });
         DebugOverlay.registerDebugLine(swimLevelSupplier.getKey(), swimLevelSupplier);
-
-        var supportSupplier = new DebugSupplier("Lestora_Support", 7, () -> {
-            var lp = LestoraPlayer.get(Minecraft.getInstance().player);
-            var supportPos = lp.getSupportingBlock();
-            var support = StandingBlockUtil.getSupportingBlockType(supportPos) + " " + supportPos.getSupportingPos();
-            var color = 16777215;
-            return new DebugObject("Supt", color, false, StandingBlockUtil.getSupportingBlockType(supportPos), color, false,
-                    "Supporting Block", color, true, support, color, true);
-        });
-        DebugOverlay.registerDebugLine(supportSupplier.getKey(), supportSupplier);
     }
 
     public static Map<UUID, LestoraPlayer> getPlayers() {
@@ -151,18 +128,6 @@ public class LestoraPlayer {
         return this.bodyTemp;
     }
 
-    public EntityBlockInfo getSupportingBlock() {
-        return supportingBlock;
-    }
-
-    public BlockState getStateStanding() {
-        return this.supportingBlock.getSupportingBlock();
-    }
-
-    public Wetness getWetness() {
-        return wetness;
-    }
-
     public Biome getBiome() {
         return biome;
     }
@@ -195,8 +160,8 @@ public class LestoraPlayer {
         this.uuid = player.getUUID();
 
         CacheNearbyBlocks();
-        CalculateSupportBlock();
-        CalculateWetness();
+        SupportBlock.calculate(this.mcPlayer);
+        WetnessUtil.calculate(this.mcPlayer);
         RubberBand(this.bodyTemp, CalculateBodyTemp());
 
         long currentTime = System.currentTimeMillis();
@@ -213,25 +178,40 @@ public class LestoraPlayer {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Damage type registry not found"));
 
+        var isOverworld = this.level.dimension().equals(Level.OVERWORLD);
         float freezeDmg = 0;
         float heatDmg = 0;
         int drownDmg = 0;
+        float baseTemp = ConfigBiomeTempEventHandler.getBiomeTemp(this.biome);
 
-        if (this.wetness == Wetness.FULLY_SUBMERGED || this.wetness == Wetness.NEARLY_SUBMERGED)
+        Wetness playerWetness = WetnessUtil.getWetness(player);
+        if (playerWetness == Wetness.FULLY_SUBMERGED || playerWetness == Wetness.NEARLY_SUBMERGED)
             drownDmg = switch (this.swimLevel) {
-                case 0 -> (this.wetness == Wetness.FULLY_SUBMERGED ? 20 : 15);
-                case 1 -> (this.wetness == Wetness.FULLY_SUBMERGED ? 15 : 10);
-                case 2 -> (this.wetness == Wetness.FULLY_SUBMERGED ? 10 : 5);
+                case 0 -> (playerWetness == Wetness.FULLY_SUBMERGED ? 20 : 15);
+                case 1 -> (playerWetness == Wetness.FULLY_SUBMERGED ? 15 : 10);
+                case 2 -> (playerWetness == Wetness.FULLY_SUBMERGED ? 10 : 5);
                 default -> 0;
             };
 
-        if (this.bodyTemp < 60){
-            freezeDmg = -1 * (60 - this.bodyTemp) / 2;
+        var wetDiff = playerWetness.ordinal() * 15;
+        var time = daytimeTempOffset(this.level.getDayTime(), baseTemp);
+        if (this.bodyTemp <= 45){
+            freezeDmg = ((45 - this.bodyTemp) + wetDiff) / 25;
+            if (isOverworld) {
+                if (time < 0) {
+                    freezeDmg *= 1 + (-time / maxDayDiff);
+                }
+            }
         }
 
-        var heatStart = 110 + (this.wetness.ordinal() + 40);
-        if (this.bodyTemp > heatStart){
-            heatDmg = (this.bodyTemp - heatStart) / 2;
+        var heatStart = 125 + wetDiff;
+        if (this.bodyTemp >= heatStart){
+            heatDmg = (this.bodyTemp - heatStart) / 25;
+            if (isOverworld) {
+                if (time > 0) {
+                    heatDmg *= 1 + (time / maxDayDiff);
+                }
+            }
         }
 
         if (freezeDmg > 0){
@@ -244,6 +224,7 @@ public class LestoraPlayer {
             Holder<DamageType> dmgTypeHolder = dmgRegistry.getOrThrow(DamageTypes.ON_FIRE);
             DamageSource drowningSource = new DamageSource(dmgTypeHolder);
             player.hurt(drowningSource, heatDmg);
+            System.err.println("heatDmg: " + heatDmg);
         }
 
         if (drownDmg > 0) {
@@ -283,18 +264,23 @@ public class LestoraPlayer {
 
         // If player's altitude is below 60 and the biome is not one of the underground biomes,
         // then override baseTemp to 0.5.
-        var timeOffset = 0;
-        if (mcPlayer.getBlockY() < 60) {
+
+        var isOverworld = this.level.dimension().equals(Level.OVERWORLD);
+        var coolBeanz = 0.5f;
+        if (mcPlayer.getBlockY() < 45) {
             ResourceLocation biomeRL = getBiomeResourceLocation(this.level, this.biome);
             if (biomeRL == null ||
                     (!biomeRL.equals(ResourceLocation.parse("minecraft:dripstone_caves"))
                             && !biomeRL.equals(ResourceLocation.parse("minecraft:lush_caves"))
                             && !biomeRL.equals(ResourceLocation.parse("minecraft:deep_dark")))) {
-                baseTemp = 0.5f;
+                baseTemp = coolBeanz;
             }
         }
-        else if (this.level.dimension().equals(Level.OVERWORLD)) {
-            timeOffset = daytimeTempOffset(this.level.getDayTime());
+
+        if (isOverworld && baseTemp > coolBeanz){
+            var light = level.getLightEngine().getLayerListener(LightLayer.SKY).getLightValue(playerPos);
+            float skyLightTemp = light / 15f;
+            baseTemp = ((baseTemp - coolBeanz) * skyLightTemp) + coolBeanz;
         }
 
         // Immediate check: if the player is directly in lava or fire.
@@ -303,7 +289,7 @@ public class LestoraPlayer {
             if (currentState.getBlock() == Blocks.LAVA) {
                 return 300;
             }
-            if (currentState.getBlock() == Blocks.FIRE) {
+            if (currentState.getBlock() == Blocks.FIRE || currentState.getBlock() == Blocks.SOUL_FIRE) {
                 return 150;
             }
         }
@@ -324,10 +310,11 @@ public class LestoraPlayer {
             }
         }
 
-        var thisWetness = this.wetness == Wetness.FULLY_SUBMERGED ? Wetness.NEARLY_SUBMERGED : this.wetness;
+        var playerWetness = WetnessUtil.getWetness(mcPlayer);
+        var thisWetness = playerWetness == Wetness.FULLY_SUBMERGED ? Wetness.NEARLY_SUBMERGED : playerWetness;
         var wetnessOffset = Math.min((baseTemp - 3) * -4 * thisWetness.ordinal(), 50) + (mcPlayer.isInPowderSnow ? 20 : 0);
-        float offset = 0f;
 
+        float offset = 0f;
         if (!mcPlayer.isInWater()) {
             if (hasLavaBucket || mcPlayer.isOnFire()) {
                 offset = 75f;
@@ -346,20 +333,56 @@ public class LestoraPlayer {
         else if (this.level.dimension().equals(Level.END))
             altitudeOffset = 0;
 
+        var timeOffset = 0;
+        if (isOverworld) {
+            timeOffset = daytimeTempOffset(this.level.getDayTime(), baseTemp);
+        }
+
         return Math.min((baseTemp * 25) - wetnessOffset - altitudeOffset + 60 + timeOffset + offset, 300);
     }
 
-    public static int daytimeTempOffset(long time) {
+    private static float maxDayDiff = 15f;
+    public static int daytimeTempOffset(long time, float environmentOffset) {
         long tickTime = time % 24000;
-        if (tickTime < 6000) { // Sunrise to Noon
-            return (int) (0 + (30.0 / 6000 * tickTime));
-        } else if (tickTime < 12000) { // Noon to Sunset
-            return (int) (30 - (30.0 / 6000 * (tickTime - 6000)));
-        } else if (tickTime < 18000) { // Sunset to Midnight
-            return (int) (0 - (30.0 / 6000 * (tickTime - 12000)));
-        } else { // Midnight to next Sunrise
-            return (int) (-30 + (30.0 / 6000 * (tickTime - 18000)));
+        float baseValue;
+
+        // Compute the base value:
+        // - 0 at sunrise (tick 0) and sunset (tick 12000)
+        // - 15 at noon (tick 6000)
+        // - -15 at midnight (tick 18000)
+        if (tickTime < 6000) {
+            // Sunrise (0) to noon (6000): increase from 0 to 15.
+            baseValue = (maxDayDiff / 6000) * tickTime;
+        } else if (tickTime < 12000) {
+            // Noon (6000) to sunset (12000): decrease from 15 to 0.
+            baseValue = maxDayDiff - (maxDayDiff / 6000) * (tickTime - 6000);
+        } else if (tickTime < 18000) {
+            // Sunset (12000) to midnight (18000): decrease from 0 to -15.
+            baseValue = 0f - (maxDayDiff / 6000) * (tickTime - 12000);
+        } else {
+            // Midnight (18000) to next sunrise (24000): increase from -15 to 0.
+            baseValue = -maxDayDiff + (maxDayDiff / 6000) * (tickTime - 18000);
         }
+
+        // Apply the environmentOffset multipliers:
+        float result = baseValue;
+        if (environmentOffset < 0) {
+            var absOffset = Math.abs(environmentOffset) + 1;
+            if (baseValue < 0) {
+                result = baseValue * absOffset;
+            } else if (baseValue > 0) {
+                result = baseValue * (absOffset / 2.0f);
+            }
+        } else if (environmentOffset > 0) {
+            var absOffset = environmentOffset + 1;
+            if (baseValue < 0) {
+                result = baseValue * (absOffset / 2.0f);
+            } else if (baseValue > 0) {
+                result = baseValue * absOffset;
+            }
+        }
+
+        return (int) result;
     }
 
 
@@ -379,7 +402,7 @@ public class LestoraPlayer {
                                 if (candidate > offset) {
                                     offset = candidate;
                                 }
-                            } else if (state.getBlock() == Blocks.FIRE) {
+                            } else if (state.getBlock() == Blocks.FIRE || state.getBlock() == Blocks.SOUL_FIRE) {
                                 float candidate = getFireOffset(d);
                                 if (candidate > offset) {
                                     offset = candidate;
@@ -413,78 +436,6 @@ public class LestoraPlayer {
             case 5: return 5f;
             default: return 0f;
         }
-    }
-
-    private void CalculateWetness() {
-        long now = System.currentTimeMillis();
-        if (lastUpdateTime == 0) {
-            lastUpdateTime = now;
-        }
-        // Compute elapsed time in seconds.
-        float delta = (now - lastUpdateTime) / 1000f;
-        lastUpdateTime = now;
-
-        // Calculate drynessTime based on bodyTemp.
-        // For bodyTemp <= 100: interpolate from 30 sec at -100 to 5 sec at 100.
-        // For bodyTemp > 100: cap at 1 sec.
-        float clampedTemp = Math.max(-100f, Math.min(bodyTemp, 100f));
-        float drynessTime = (bodyTemp > 100) ? 1f : 30f - 0.125f * (clampedTemp + 100f);
-
-        // Accumulate time since last state transition.
-        transitionTimer += delta;
-
-        // Get the current "raw" wetness from your utility.
-        var rawWetness = WetnessUtil.getPlayerWetness(this.mcPlayer, this.supportingBlock);
-
-        // Immediate upgrade: if the raw wetness is wetter than our current state.
-        if (rawWetness.ordinal() > this.wetness.ordinal()) {
-            this.wetness = rawWetness;
-            transitionTimer = 0;
-            return;
-        }
-
-        // If we were FULLY_SUBMERGED but now have less wet raw value,
-        // immediately drop to NEARLY_SUBMERGED.
-        if (this.wetness == Wetness.FULLY_SUBMERGED && rawWetness.ordinal() < Wetness.FULLY_SUBMERGED.ordinal()) {
-            this.wetness = Wetness.NEARLY_SUBMERGED;
-            transitionTimer = 0;
-            return;
-        }
-
-        if (this.wetness == Wetness.NEARLY_SUBMERGED && this.supportingBlock.getSupportingBlock().getBlock() != Blocks.WATER) {
-            this.wetness = Wetness.SOAKED;
-        }
-
-        // If accumulated time exceeds drynessTime, downgrade one stage.
-        if (transitionTimer >= drynessTime) {
-            switch (this.wetness) {
-                case NEARLY_SUBMERGED:
-                    this.wetness = Wetness.SOAKED;
-                    break;
-                case SOAKED:
-                    this.wetness = Wetness.DAMP;
-                    break;
-                case DAMP:
-                    this.wetness = Wetness.DRY;
-                    break;
-                default:
-                    // Already DRY, do nothing.
-                    break;
-            }
-            transitionTimer = 0;
-        }
-    }
-
-    private void CalculateSupportBlock() {
-        if (this.supportingBlock != null) {
-            var thisBlock = this.supportingBlock.getSupportingBlock().getBlock();
-            if (thisBlock == Blocks.WATER) {
-                lastBlockSolid = false;
-            } else if (thisBlock != Blocks.AIR) {
-                lastBlockSolid = true;
-            }
-        }
-        this.supportingBlock = StandingBlockUtil.getSupportingBlock(this.mcPlayer, lastBlockSolid);
     }
 
     // Helper method for getting the ResourceLocation for a given biome.
