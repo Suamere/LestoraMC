@@ -101,6 +101,7 @@ dependencies {
     implementation fg.deobf(files("libs/lestora_debug-1.0.1.jar"))
     implementation fg.deobf(files("libs/lestora_block_support-1.0.1.jar"))
     implementation fg.deobf(files("libs/lestora_wetness-1.0.0.jar"))
+    implementation fg.deobf(files("libs/lestora_vanilla_temperature-1.0.0.jar"))
     implementation 'com.squareup.okhttp3:okhttp:4.10.0'
     okHttpLib 'com.squareup.okhttp3:okhttp:4.10.0'
     implementation 'org.xerial:sqlite-jdbc:3.41.2.1'
